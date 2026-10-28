@@ -1,6 +1,6 @@
 {
-  "name": "おやすみRTA",
-  "short_name": "おやすみRTA",
+  "name": "はよ寝てやご飯やで",
+  "short_name": "はよ寝てや",
   "description": "帰宅後のご飯とお風呂をタイムアタックして、早く寝るためのアプリ",
   "lang": "ja",
   "start_url": "./",

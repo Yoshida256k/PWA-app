@@ -1,4 +1,4 @@
-# おやすみRTA
+# はよ寝てやご飯やで
 
 帰宅後の「ご飯」と「お風呂」をタイムアタック(RTA)にして、早く寝るためのPWAです。
 [task_ver4](https://github.com/Yoshida256k/task_ver4) のLiveSplit風UIをWebに移植しています。
@@ -25,7 +25,7 @@
 ローカルで試す場合: `python3 -m http.server` を実行して http://localhost:8000 を開く。
 
 ## ファイルを更新したとき
-`sw.js` の `CACHE` のバージョン(`oyasumi-rta-v1`)を上げると、古いキャッシュが入れ替わります。
+`sw.js` の `CACHE` のバージョン(`oyasumi-rta-v2`)を上げると、古いキャッシュが入れ替わります。
 
 ## Claude Code スキル
 - `.claude/skills/progressive-web-app/` — [secondsky/claude-skills](https://github.com/secondsky/claude-skills) (MIT) の PWA スキル
