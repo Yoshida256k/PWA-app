@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="おやすみRTA">
+  <title>おやすみRTA</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ホーム -->
+  <section id="home" class="screen">
+    <header class="bar">
+      <span class="bar-title">おやすみRTA</span>
+      <button class="icon-btn" data-go="history" aria-label="歴代記録">🏆</button>
+      <button class="icon-btn" data-go="settings" aria-label="設定">⚙</button>
+    </header>
+    <div class="content">
+      <div class="clock-card">
+        <div class="muted small">いま</div>
+        <div id="home-now" class="now-clock">--:--</div>
+        <div class="muted small">目標就寝 <b id="home-target-bed">--:--</b></div>
+        <div id="home-forecast" class="forecast"></div>
+      </div>
+
+      <div id="home-pbs" class="pb-list"></div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="muted small">挑戦回数</div><div id="home-attempts" class="stat-val">0</div></div>
+        <div class="stat"><div class="muted small">直近7回の目標達成</div><div id="home-bed-ok" class="stat-val">-</div></div>
+      </div>
+    </div>
+    <footer class="foot">
+      <button id="btn-start" class="big-btn">🏠 帰宅 — START</button>
+    </footer>
+  </section>
+
+  <!-- タイマー -->
+  <section id="run" class="screen" hidden>
+    <header class="bar">
+      <span id="run-title" class="bar-title">おやすみRTA</span>
+      <span id="run-attempt" class="muted small"></span>
+    </header>
+    <div class="content run-content">
+      <div class="timer-block">
+        <div id="run-total" class="rta-timer"><span class="main">00:00</span><span class="cs">.00</span></div>
+        <div class="seg-line">
+          <span id="run-seg-name" class="seg-name"></span>
+          <span id="run-seg" class="seg-time">00:00</span>
+          <span class="muted small">/ 目標 <span id="run-seg-target"></span></span>
+        </div>
+        <div class="bar-track"><div id="run-progress" class="bar-fill"></div></div>
+        <div class="run-meta">
+          <span>vs PB <b id="run-vs-pb">--</b></span>
+          <span>就寝予想 <b id="run-bed">--:--</b></span>
+        </div>
+      </div>
+      <div id="run-splits" class="splits"></div>
+    </div>
+    <footer class="foot run-foot">
+      <button id="btn-pause" class="sub-btn">⏸ 一時停止</button>
+      <button id="btn-split" class="big-btn">完了 →</button>
+      <button id="btn-abort" class="sub-btn danger">✕ 中断</button>
+    </footer>
+  </section>
+
+  <!-- リザルト -->
+  <section id="result" class="screen" hidden>
+    <header class="bar"><span class="bar-title">RESULT</span></header>
+    <div class="content">
+      <div id="result-rank" class="rank-block"></div>
+      <div id="result-total" class="rta-timer center"></div>
+      <div id="result-badges" class="badges"></div>
+      <div id="result-splits" class="splits"></div>
+      <div id="result-bed" class="bed-line"></div>
+    </div>
+    <footer class="foot">
+      <button id="btn-sleep" class="big-btn">🌙 おやすみ（就寝を記録）</button>
+      <button id="btn-result-home" class="sub-btn wide">ホームへ</button>
+    </footer>
+  </section>
+
+  <!-- 歴代記録 -->
+  <section id="history" class="screen" hidden>
+    <header class="bar">
+      <button class="icon-btn" data-go="home" aria-label="戻る">←</button>
+      <span class="bar-title">歴代タイムアタック</span>
+    </header>
+    <div class="tabs" id="history-tabs"></div>
+    <div class="content" id="history-body"></div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="settings" class="screen" hidden>
+    <header class="bar">
+      <button class="icon-btn" data-go="home" aria-label="戻る">←</button>
+      <span class="bar-title">設定</span>
+    </header>
+    <div class="content">
+      <form id="settings-form" class="form">
+        <label>目標就寝時刻<input type="time" name="targetBed" required></label>
+        <fieldset>
+          <legend>タスク1</legend>
+          <label>名前<input type="text" name="name0" maxlength="12" required></label>
+          <label>目標(分)<input type="number" name="target0" min="1" max="180" required></label>
+        </fieldset>
+        <fieldset>
+          <legend>タスク2</legend>
+          <label>名前<input type="text" name="name1" maxlength="12" required></label>
+          <label>目標(分)<input type="number" name="target1" min="1" max="180" required></label>
+        </fieldset>
+        <label class="check"><input type="checkbox" name="sound"> 目標時間を超えたら音とバイブで知らせる</label>
+        <button type="submit" class="big-btn">保存</button>
+      </form>
+      <div class="form">
+        <h3>バックアップ</h3>
+        <p class="muted small">記録はこの端末のブラウザ内に保存されます。機種変更やデータ削除に備えて書き出しておけます。</p>
+        <button id="btn-export" class="sub-btn wide">記録を書き出す (JSON)</button>
+        <label class="sub-btn wide file-btn">記録を読み込む<input id="input-import" type="file" accept="application/json,.json" hidden></label>
+        <button id="btn-clear" class="sub-btn wide danger">全記録を削除</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 記録詳細 -->
+  <dialog id="detail">
+    <div id="detail-body"></div>
+    <div class="dialog-actions">
+      <button id="btn-detail-delete" class="sub-btn danger">削除</button>
+      <button id="btn-detail-close" class="sub-btn">閉じる</button>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
