@@ -18,6 +18,7 @@
   <section id="home" class="screen">
     <header class="bar">
       <span class="bar-title">はよ寝てやご飯やで</span>
+      <button class="icon-btn" data-go="calendar" aria-label="カレンダー">📅</button>
       <button class="icon-btn" data-go="history" aria-label="歴代記録">🏆</button>
       <button class="icon-btn" data-go="settings" aria-label="設定">⚙</button>
     </header>
@@ -37,7 +38,10 @@
       </div>
     </div>
     <footer class="foot">
-      <button id="btn-start" class="big-btn">🏠 帰宅 — START</button>
+      <div class="muted small center-text">どっちからやる？</div>
+      <div id="order-select" class="order-select" role="radiogroup" aria-label="取り組む順番"></div>
+      <div class="start-hint">🚪 玄関の扉を開けた瞬間に押してスタート！</div>
+      <button id="btn-start" class="big-btn">🚪 玄関オープン — START</button>
     </footer>
   </section>
 
@@ -70,6 +74,21 @@
     </footer>
   </section>
 
+  <!-- ひとこと -->
+  <section id="comment" class="screen" hidden>
+    <header class="bar"><span class="bar-title">GOAL! 🏁</span></header>
+    <div class="content">
+      <div id="comment-total" class="rta-timer center"></div>
+      <label class="comment-label" for="comment-input">今日のひとこと</label>
+      <textarea id="comment-input" class="comment-input" maxlength="200" rows="4"
+        placeholder="例: ご飯中にスマホ見てもうた / 風呂はシャワーで即終了！"></textarea>
+      <div class="muted small">あとで「あの日どうだっけ？」とカレンダーから見返せます</div>
+    </div>
+    <footer class="foot">
+      <button id="btn-comment-done" class="big-btn">リザルトを見る →</button>
+    </footer>
+  </section>
+
   <!-- リザルト -->
   <section id="result" class="screen" hidden>
     <header class="bar"><span class="bar-title">RESULT</span></header>
@@ -78,6 +97,7 @@
       <div id="result-total" class="rta-timer center"></div>
       <div id="result-badges" class="badges"></div>
       <div id="result-splits" class="splits"></div>
+      <div id="result-comment"></div>
       <div id="result-bed" class="bed-line"></div>
     </div>
     <footer class="foot">
@@ -94,6 +114,24 @@
     </header>
     <div class="tabs" id="history-tabs"></div>
     <div class="content" id="history-body"></div>
+  </section>
+
+  <!-- カレンダー -->
+  <section id="calendar" class="screen" hidden>
+    <header class="bar">
+      <button class="icon-btn" data-go="home" aria-label="戻る">←</button>
+      <span class="bar-title">カレンダー</span>
+    </header>
+    <div class="content">
+      <div class="cal-nav">
+        <button id="cal-prev" class="icon-btn" aria-label="前の月">‹</button>
+        <span id="cal-title" class="cal-title"></span>
+        <button id="cal-next" class="icon-btn" aria-label="次の月">›</button>
+      </div>
+      <div id="cal-grid" class="cal-grid"></div>
+      <div class="muted small cal-legend">文字はランク、下の時刻は就寝(緑=目標達成)。日付をタップするとその日のリザルトとひとことが見られます。</div>
+      <div id="cal-day" class="cal-day"></div>
+    </div>
   </section>
 
   <!-- 設定 -->
@@ -131,7 +169,10 @@
   <!-- 記録詳細 -->
   <dialog id="detail">
     <div id="detail-body"></div>
+    <label class="comment-label" for="detail-comment">ひとこと</label>
+    <textarea id="detail-comment" class="comment-input" maxlength="200" rows="3" placeholder="(なし)"></textarea>
     <div class="dialog-actions">
+      <button id="btn-detail-save" class="sub-btn">ひとことを保存</button>
       <button id="btn-detail-delete" class="sub-btn danger">削除</button>
       <button id="btn-detail-close" class="sub-btn">閉じる</button>
     </div>

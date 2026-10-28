@@ -9,6 +9,7 @@ const MAX_RECORDS = 1000;
 const DEFAULT_SETTINGS = {
   targetBed: '22:45',
   sound: true,
+  firstTask: 'task0',
   tasks: [
     { id: 'task0', name: 'ご飯', targetMin: 25 },
     { id: 'task1', name: 'お風呂', targetMin: 15 },
@@ -95,11 +96,18 @@ function targetBedMinutes() {
   return v < 12 * 60 ? v + 24 * 60 : v;
 }
 
-/* ===== 記録の集計 ===== */
+/** 記録が属する日付 "YYYY-MM-DD"。深夜4時までは前日扱い(夜更かししても「その日」の記録になる) */
+function dayKeyOf(ms) {
+  const d = new Date(ms - 4 * 3600 * 1000);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/* ===== 記録の集計(タスクは順番ではなく id で扱う) ===== */
 
 const tasks = () => store.settings.tasks;
-const targetSecOf = (i) => tasks()[i].targetMin * 60;
+const taskById = (id) => tasks().find((t) => t.id === id) || tasks()[0];
 const targetTotalSec = () => tasks().reduce((s, t) => s + t.targetMin * 60, 0);
+const segOf = (r, id) => r.splits.find((s) => s.id === id)?.sec;
 
 /** task_ver4 の computeRank と同じ基準(目標合計に対する短縮率) */
 function computeRank(totalSec, targetSec) {
@@ -113,24 +121,27 @@ function computeRank(totalSec, targetSec) {
   return { rank: 'C', title: 'GOAL REACHED!', color: 'var(--muted)' };
 }
 
+const rankColor = (rank) => ({ S: 'var(--yellow)', A: 'var(--accent)', B: 'var(--cyan)' }[rank] || 'var(--muted)');
+
 function pbRecord(records = store.records) {
   let best = null;
   for (const r of records) if (!best || r.totalSec < best.totalSec) best = r;
   return best;
 }
 
-function bestSegment(i, records = store.records) {
+function bestSegment(id, records = store.records) {
   let best = null;
   for (const r of records) {
-    const s = r.splits[i]?.sec;
+    const s = segOf(r, id);
     if (s != null && (best == null || s < best)) best = s;
   }
   return best;
 }
 
-function cumulative(splits) {
+/** PB の区間タイムを、今回の順番(ids)に並べ替えて累積したもの。最後の値は PB の合計と一致する */
+function pbCumulative(pb, ids) {
   let c = 0;
-  return splits.map((s) => (c += s.sec));
+  return ids.map((id) => (c += segOf(pb, id) ?? taskById(id).targetMin * 60));
 }
 
 /* ===== 画面遷移 ===== */
@@ -144,6 +155,7 @@ function go(name) {
   if (name === 'home') renderHome();
   if (name === 'history') renderHistory();
   if (name === 'settings') renderSettings();
+  if (name === 'calendar') renderCalendar();
 }
 
 document.addEventListener('click', (e) => {
@@ -152,6 +164,11 @@ document.addEventListener('click', (e) => {
 });
 
 /* ===== ホーム ===== */
+
+function orderFrom(firstId) {
+  const first = taskById(firstId);
+  return [first.id, ...tasks().filter((t) => t.id !== first.id).map((t) => t.id)];
+}
 
 function renderHome() {
   $('home-now').textContent = fmtClock(Date.now());
@@ -166,8 +183,8 @@ function renderHome() {
   fc.textContent = `今から${pb ? 'PBペース' : '目標ペース'}で終わると ${fmtClock(endMs)} ` +
     (margin >= 0 ? `(あと${margin}分 余裕)` : `(${-margin}分 オーバー)`);
 
-  const rows = tasks().map((t, i) => {
-    const b = bestSegment(i);
+  const rows = tasks().map((t) => {
+    const b = bestSegment(t.id);
     return `<div class="pb-item"><span class="name">${esc(t.name)}</span>
       <span class="muted small">目標 ${t.targetMin}分 / PB</span>
       <span class="pb">${b == null ? '--:--' : fmtRta(b)}</span></div>`;
@@ -181,29 +198,44 @@ function renderHome() {
   const recent = store.records.filter((r) => r.bedAt).slice(-7);
   const ok = recent.filter((r) => nightMinutes(r.bedAt) <= targetBedMinutes()).length;
   $('home-bed-ok').textContent = recent.length ? `${ok}/${recent.length}` : '-';
+
+  $('order-select').innerHTML = tasks().map((t) => {
+    const label = orderFrom(t.id).map((id) => esc(taskById(id).name)).join(' → ');
+    return `<button class="order-btn" role="radio" data-first="${t.id}"
+      aria-checked="${t.id === taskById(store.settings.firstTask).id}">${label}</button>`;
+  }).join('');
 }
+
+$('order-select').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-first]');
+  if (!b) return;
+  store.settings.firstTask = b.dataset.first;
+  persist();
+  renderHome();
+});
 
 setInterval(() => { if (currentScreen === 'home') renderHome(); }, 15000);
 
 /* ===== タイマー(壁時計方式: 経過 = (停止時刻 or 現在) - t0) ===== */
 
-let run = loadJson(RUN_KEY, null); // { t0, pausedAt, marks: [累積ms], alerted: [bool] }
+// { t0, pausedAt, marks: [累積ms], alerted: [bool], order: [taskId] }
+let run = loadJson(RUN_KEY, null);
 let rafId = 0;
 let wakeLock = null;
 
 const elapsedMs = () => (run.pausedAt ?? Date.now()) - run.t0;
+const runTask = (k) => taskById(run.order[k]);
 
 function startRun() {
   unlockAudio();
-  run = { t0: Date.now(), pausedAt: null, marks: [], alerted: [] };
+  run = { t0: Date.now(), pausedAt: null, marks: [], alerted: [], order: orderFrom(store.settings.firstTask) };
   saveJson(RUN_KEY, run);
   enterRun();
 }
 
 function enterRun() {
   go('run');
-  const n = store.records.length + 1;
-  $('run-attempt').textContent = `${n}回目`;
+  $('run-attempt').textContent = `${store.records.length + 1}回目`;
   requestWakeLock();
   renderRunStatic();
   cancelAnimationFrame(rafId);
@@ -212,9 +244,10 @@ function enterRun() {
 
 function renderRunStatic() {
   const idx = run.marks.length;
-  $('run-seg-name').textContent = tasks()[idx].name;
-  $('run-seg-target').textContent = `${tasks()[idx].targetMin}分`;
-  $('btn-split').textContent = idx === tasks().length - 1 ? 'ゴール！ 🏁' : `${tasks()[idx].name} 完了 →`;
+  const t = runTask(idx);
+  $('run-seg-name').textContent = t.name;
+  $('run-seg-target').textContent = `${t.targetMin}分`;
+  $('btn-split').textContent = idx === run.order.length - 1 ? 'ゴール！ 🏁' : `${t.name} 完了 →`;
   $('btn-pause').textContent = run.pausedAt ? '▶ 再開' : '⏸ 一時停止';
   $('run').classList.toggle('paused', !!run.pausedAt);
 }
@@ -225,12 +258,11 @@ function tick() {
   const total = elapsedMs() / 1000;
   const segStart = idx ? run.marks[idx - 1] / 1000 : 0;
   const seg = total - segStart;
-  const target = targetSecOf(idx);
+  const target = runTask(idx).targetMin * 60;
   const over = seg > target;
 
   const pb = pbRecord();
-  const pbCum = pb ? cumulative(pb.splits) : null;
-  const vsPb = pbCum ? total - pbCum[idx] : null;
+  const vsPb = pb ? total - pbCumulative(pb, run.order)[idx] : null;
 
   const totalEl = $('run-total');
   totalEl.querySelector('.main').textContent = fmtRta(total);
@@ -250,7 +282,7 @@ function tick() {
 
   // 就寝予想 = 現在 + 今のタスクの残り目標 + 未着手タスクの目標
   let restSec = Math.max(0, target - seg);
-  for (let i = idx + 1; i < tasks().length; i++) restSec += targetSecOf(i);
+  for (let k = idx + 1; k < run.order.length; k++) restSec += runTask(k).targetMin * 60;
   const bedMs = Date.now() + restSec * 1000;
   const bedEl = $('run-bed');
   bedEl.textContent = fmtClock(bedMs);
@@ -268,19 +300,18 @@ function tick() {
 }
 
 function liveSplits(totalSec) {
-  const out = [];
   let prev = 0;
-  tasks().forEach((t, i) => {
-    if (i < run.marks.length) {
-      out.push({ id: t.id, name: t.name, sec: (run.marks[i] - prev) / 1000, targetSec: t.targetMin * 60 });
-      prev = run.marks[i];
-    } else if (i === run.marks.length) {
-      out.push({ id: t.id, name: t.name, sec: totalSec - prev / 1000, targetSec: t.targetMin * 60, live: true });
-    } else {
-      out.push({ id: t.id, name: t.name, sec: null, targetSec: t.targetMin * 60 });
+  return run.order.map((id, k) => {
+    const t = taskById(id);
+    const base = { id, name: t.name, targetSec: t.targetMin * 60 };
+    if (k < run.marks.length) {
+      const sec = (run.marks[k] - prev) / 1000;
+      prev = run.marks[k];
+      return { ...base, sec };
     }
+    if (k === run.marks.length) return { ...base, sec: totalSec - prev / 1000, live: true };
+    return { ...base, sec: null };
   });
-  return out;
 }
 
 /**
@@ -289,7 +320,7 @@ function liveSplits(totalSec) {
  */
 function renderSplits(el, splits, pb, currentIdx = -1, excludeId = null) {
   const others = store.records.filter((r) => r.id !== excludeId);
-  const base = pb ? cumulative(pb.splits) : null;
+  const base = pb ? pbCumulative(pb, splits.map((s) => s.id)) : null;
   let cum = 0;
   let targetCum = 0;
   const rows = splits.map((s, i) => {
@@ -301,7 +332,7 @@ function renderSplits(el, splits, pb, currentIdx = -1, excludeId = null) {
     }
     cum += s.sec;
     const delta = cum - cmp;
-    const best = bestSegment(i, others);
+    const best = bestSegment(s.id, others);
     const gold = !s.live && best != null && s.sec < best;
     const cls = gold ? 'd-gold' : delta <= 0 ? 'd-ahead' : 'd-behind';
     // 進行中の行は差分がマイナスの間は出さない(LiveSplit と同じく遅れ始めたら表示)
@@ -318,7 +349,7 @@ function splitNow() {
   run.marks.push(elapsedMs());
   if (navigator.vibrate) navigator.vibrate(40);
   beep(880, 0.08);
-  if (run.marks.length >= tasks().length) {
+  if (run.marks.length >= run.order.length) {
     finishRun();
   } else {
     saveJson(RUN_KEY, run);
@@ -346,40 +377,48 @@ function abortRun() {
   go('home');
 }
 
-let lastResultId = null;
+// ゴール直後のリザルト表示用(ひとこと入力 → リザルト)
+let lastResult = null; // { id, prevPb, goldIds }
 
 function finishRun() {
   const finishedAt = Date.now();
-  let prev = 0;
-  const splits = tasks().map((t, i) => {
-    const sec = (run.marks[i] - prev) / 1000;
-    prev = run.marks[i];
-    return { id: t.id, name: t.name, sec, targetSec: t.targetMin * 60 };
-  });
+  const splits = liveSplits(0).map(({ live, ...s }) => s);
   const totalSec = run.marks[run.marks.length - 1] / 1000;
   const prevPb = pbRecord();
+  const goldIds = splits.filter((s) => { const b = bestSegment(s.id); return b != null && s.sec < b; }).map((s) => s.id);
   const record = {
     id: new Date(finishedAt).toISOString(),
-    startedAt: finishedAt - (totalSec * 1000),
+    startedAt: finishedAt - totalSec * 1000,
     finishedAt,
     splits,
     totalSec,
     targetTotalSec: targetTotalSec(),
     rank: computeRank(totalSec, targetTotalSec()).rank,
     bedAt: null,
+    comment: '',
   };
-  const goldIdx = splits.map((s, i) => { const b = bestSegment(i); return b == null || s.sec < b; });
   store.records.push(record);
   persist();
   run = null;
   saveJson(RUN_KEY, null);
   releaseWakeLock();
   fanfare();
-  lastResultId = record.id;
-  showResult(record, prevPb, goldIdx);
+  lastResult = { id: record.id, prevPb, goldIds };
+
+  go('comment');
+  $('comment-total').innerHTML = `<span class="main">${fmtRta(totalSec)}</span><span class="cs">${fmtCentis(totalSec)}</span>`;
+  $('comment-input').value = '';
 }
 
-function showResult(record, prevPb, goldIdx) {
+function commentDone() {
+  const rec = store.records.find((r) => r.id === lastResult?.id);
+  if (!rec) { go('home'); return; }
+  rec.comment = $('comment-input').value.trim();
+  persist();
+  showResult(rec, lastResult.prevPb, lastResult.goldIds);
+}
+
+function showResult(record, prevPb, goldIds) {
   go('result');
   const r = computeRank(record.totalSec, record.targetTotalSec);
   $('result-rank').innerHTML = `<div class="rank-letter" style="color:${r.color}">${r.rank}</div>
@@ -388,14 +427,13 @@ function showResult(record, prevPb, goldIdx) {
 
   const badges = [];
   if (!prevPb || record.totalSec < prevPb.totalSec) badges.push('<span class="badge">👑 NEW PB!</span>');
-  if (prevPb) {
-    goldIdx.forEach((g, i) => { if (g) badges.push(`<span class="badge">⭐ ${esc(record.splits[i].name)} 区間ベスト</span>`); });
-  }
+  for (const id of goldIds) badges.push(`<span class="badge">⭐ ${esc(taskById(id).name)} 区間ベスト</span>`);
   const saved = record.targetTotalSec - record.totalSec;
   badges.push(`<span class="badge cyan">目標比 ${fmtDelta(-saved)}</span>`);
   $('result-badges').innerHTML = badges.join('');
 
   renderSplits($('result-splits'), record.splits, prevPb, -1, record.id);
+  $('result-comment').innerHTML = record.comment ? `<div class="comment-box">💬 ${esc(record.comment)}</div>` : '';
   renderBedLine(record);
 }
 
@@ -416,7 +454,7 @@ function renderBedLine(record) {
 }
 
 function recordSleep() {
-  const rec = store.records.find((r) => r.id === lastResultId);
+  const rec = store.records.find((r) => r.id === lastResult?.id);
   if (!rec) return;
   rec.bedAt = Date.now();
   persist();
@@ -427,6 +465,7 @@ $('btn-start').addEventListener('click', startRun);
 $('btn-split').addEventListener('click', splitNow);
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-abort').addEventListener('click', abortRun);
+$('btn-comment-done').addEventListener('click', commentDone);
 $('btn-sleep').addEventListener('click', recordSleep);
 $('btn-result-home').addEventListener('click', () => go('home'));
 
@@ -492,7 +531,7 @@ let listSort = 'newest';
 function renderHistory() {
   const tabDefs = [
     ['total', '合計'],
-    ...tasks().map((t, i) => [`seg${i}`, t.name]),
+    ...tasks().map((t) => [`seg:${t.id}`, t.name]),
     ['bed', '就寝'],
     ['all', '全記録'],
   ];
@@ -501,18 +540,19 @@ function renderHistory() {
 
   const body = $('history-body');
   if (!store.records.length) {
-    body.innerHTML = '<div class="empty">まだ記録がありません。<br>帰宅したら START！</div>';
+    body.innerHTML = '<div class="empty">まだ記録がありません。<br>玄関を開けたら START！</div>';
     return;
   }
 
-  if (historyTab === 'total' || historyTab.startsWith('seg')) {
-    const i = historyTab === 'total' ? -1 : Number(historyTab.slice(3));
+  if (historyTab === 'total' || historyTab.startsWith('seg:')) {
+    const id = historyTab === 'total' ? null : historyTab.slice(4);
+    const valueOf = (r) => (id ? segOf(r, id) : r.totalSec);
     const entries = store.records
-      .map((r) => ({ r, sec: i < 0 ? r.totalSec : r.splits[i]?.sec }))
+      .map((r) => ({ r, sec: valueOf(r) }))
       .filter((e) => e.sec != null)
       .sort((a, b) => a.sec - b.sec);
-    const target = i < 0 ? targetTotalSec() : targetSecOf(i);
-    body.innerHTML = trendChart(store.records.slice(-30).map((r) => (i < 0 ? r.totalSec : r.splits[i]?.sec)), target, 'time') +
+    const target = id ? taskById(id).targetMin * 60 : targetTotalSec();
+    body.innerHTML = trendChart(store.records.slice(-30).map(valueOf), target, 'time') +
       `<div class="board">${entries.slice(0, 50).map((e, n) => boardRow(e.r, n + 1, fmtRta(e.sec))).join('')}</div>`;
   } else if (historyTab === 'bed') {
     const withBed = store.records.filter((r) => r.bedAt);
@@ -539,11 +579,12 @@ function renderHistory() {
 
 function boardRow(r, place, timeHtml, plainPlace = false) {
   const pcls = !plainPlace && typeof place === 'number' && place <= 3 ? ` p${place}` : '';
-  const split = r.splits.map((s) => `${esc(s.name)} ${fmtRta(s.sec)}`).join(' / ');
+  const split = r.splits.map((s) => `${esc(s.name)} ${fmtRta(s.sec)}`).join(' → ');
   const bed = r.bedAt ? ` ・🌙${fmtClock(r.bedAt)}` : '';
+  const comment = r.comment ? `<div class="sub">💬 ${esc(r.comment)}</div>` : '';
   return `<button class="board-row${pcls}" data-record="${esc(r.id)}">
     <span class="place">${place}</span>
-    <span><div>${fmtDate(r.finishedAt)}${bed}</div><div class="sub">${split}</div></span>
+    <span><div>${fmtDate(r.finishedAt)}${bed}</div><div class="sub">${split}</div>${comment}</span>
     <span class="time">${timeHtml}</span></button>`;
 }
 
@@ -582,6 +623,75 @@ $('history-body').addEventListener('click', (e) => {
   if (row) openDetail(row.dataset.record);
 });
 
+/* ===== カレンダー ===== */
+
+let calYear = null;
+let calMonth = null; // 0-11
+let calSelected = null; // "YYYY-MM-DD"
+
+function renderCalendar() {
+  const todayKey = dayKeyOf(Date.now());
+  if (calYear == null) {
+    const [y, m] = todayKey.split('-').map(Number);
+    calYear = y;
+    calMonth = m - 1;
+    calSelected = todayKey;
+  }
+  $('cal-title').textContent = `${calYear}年${calMonth + 1}月`;
+
+  const byDay = new Map();
+  for (const r of store.records) {
+    const k = dayKeyOf(r.startedAt ?? r.finishedAt);
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(r);
+  }
+
+  const cells = ['日', '月', '火', '水', '木', '金', '土'].map((w, i) =>
+    `<div class="cal-dow${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}">${w}</div>`);
+  const firstDow = new Date(calYear, calMonth, 1).getDay();
+  const days = new Date(calYear, calMonth + 1, 0).getDate();
+  for (let i = 0; i < firstDow; i++) cells.push('<div class="cal-cell blank"></div>');
+  for (let d = 1; d <= days; d++) {
+    const key = `${calYear}-${pad(calMonth + 1)}-${pad(d)}`;
+    const recs = byDay.get(key) || [];
+    // その日のベスト(最速)のランクと、最後の就寝時刻を表示
+    const best = pbRecord(recs);
+    const bed = [...recs].reverse().find((r) => r.bedAt)?.bedAt;
+    const bedOk = bed && nightMinutes(bed) <= targetBedMinutes();
+    const cls = ['cal-cell', key === todayKey ? 'today' : '', key === calSelected ? 'selected' : ''].join(' ');
+    cells.push(`<button class="${cls}" data-day="${key}">
+      <span class="d">${d}</span>
+      ${best ? `<span class="rk" style="color:${rankColor(best.rank)}">${best.rank}</span>` : ''}
+      ${bed ? `<span class="bt" style="color:${bedOk ? 'var(--accent)' : 'var(--red)'}">${fmtClock(bed)}</span>` : ''}
+    </button>`);
+  }
+  $('cal-grid').innerHTML = cells.join('');
+
+  const [, sm, sd] = calSelected.split('-').map(Number);
+  const recs = (byDay.get(calSelected) || []).slice().sort((a, b) => a.finishedAt - b.finishedAt);
+  $('cal-day').innerHTML = `<h3>${sm}/${sd} のリザルト</h3>` + (recs.length
+    ? `<div class="board">${recs.map((r) => boardRow(r, r.rank, fmtRta(r.totalSec))).join('')}</div>`
+    : '<div class="empty">この日の記録はありません</div>');
+}
+
+function moveMonth(diff) {
+  const d = new Date(calYear, calMonth + diff, 1);
+  calYear = d.getFullYear();
+  calMonth = d.getMonth();
+  renderCalendar();
+}
+
+$('cal-prev').addEventListener('click', () => moveMonth(-1));
+$('cal-next').addEventListener('click', () => moveMonth(1));
+$('cal-grid').addEventListener('click', (e) => {
+  const c = e.target.closest('[data-day]');
+  if (c) { calSelected = c.dataset.day; renderCalendar(); }
+});
+$('cal-day').addEventListener('click', (e) => {
+  const row = e.target.closest('[data-record]');
+  if (row) openDetail(row.dataset.record);
+});
+
 /* ===== 記録詳細 ===== */
 
 let detailId = null;
@@ -599,16 +709,30 @@ function openDetail(id) {
     <div id="detail-splits" class="splits"></div>
     <div class="muted small" style="margin-top:6px">差分はこの記録より前の PB との比較です</div>`;
   renderSplits($('detail-splits'), r.splits, pbRecord(others), -1, id);
+  $('detail-comment').value = r.comment || '';
   $('detail').showModal();
 }
 
+function refreshAfterDetail() {
+  if (currentScreen === 'history') renderHistory();
+  if (currentScreen === 'calendar') renderCalendar();
+}
+
 $('btn-detail-close').addEventListener('click', () => $('detail').close());
+$('btn-detail-save').addEventListener('click', () => {
+  const r = store.records.find((x) => x.id === detailId);
+  if (!r) return;
+  r.comment = $('detail-comment').value.trim();
+  persist();
+  $('detail').close();
+  refreshAfterDetail();
+});
 $('btn-detail-delete').addEventListener('click', () => {
   if (!confirm('この記録を削除しますか？')) return;
   store.records = store.records.filter((r) => r.id !== detailId);
   persist();
   $('detail').close();
-  renderHistory();
+  refreshAfterDetail();
 });
 
 /* ===== 設定 ===== */
@@ -641,7 +765,7 @@ $('btn-export').addEventListener('click', () => {
   const a = document.createElement('a');
   const d = new Date();
   a.href = URL.createObjectURL(blob);
-  a.download = `oyasumi-rta-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+  a.download = `hayo-nete-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
@@ -673,7 +797,11 @@ $('btn-clear').addEventListener('click', () => {
 
 /* ===== 起動 ===== */
 
-if (run && Array.isArray(run.marks) && run.marks.length < tasks().length) {
+if (run && Array.isArray(run.marks)) {
+  // 旧バージョンで始めたラン(順番なし)はご飯→お風呂の順として扱う
+  if (!Array.isArray(run.order)) run.order = tasks().map((t) => t.id);
+}
+if (run && Array.isArray(run.marks) && run.marks.length < run.order.length) {
   enterRun(); // リロードやアプリ再起動でもラン継続
 } else {
   run = null;
