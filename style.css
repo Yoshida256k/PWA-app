@@ -202,3 +202,51 @@ dialog {
 dialog::backdrop { background: rgba(0, 0, 0, .7); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .detail-title { font-weight: bold; margin-bottom: 8px; }
+
+/* 順番の選択とスタート案内 */
+.center-text { text-align: center; }
+.order-select { display: flex; gap: 8px; }
+.order-btn {
+  flex: 1; min-height: 48px; border-radius: 12px;
+  border: 2px solid var(--button); background: var(--item); color: var(--text2);
+  font-weight: bold; cursor: pointer;
+}
+.order-btn[aria-checked="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--item)); }
+.start-hint { text-align: center; color: var(--yellow); font-weight: bold; font-size: 14px; }
+
+/* ひとこと */
+.comment-label { display: block; margin: 16px 0 6px; color: var(--text2); font-size: 13px; font-weight: bold; }
+.comment-input {
+  width: 100%; resize: vertical;
+  background: var(--item); border: 1px solid var(--button); border-radius: 10px;
+  padding: 10px; font-size: 16px; color: var(--text); font-family: inherit;
+}
+.comment-box {
+  margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+  background: var(--item); border-left: 3px solid var(--cyan);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* カレンダー */
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-nav .icon-btn { font-size: 28px; padding: 0 14px; }
+.cal-title { font-weight: bold; font-size: 17px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-dow { text-align: center; font-size: 11px; color: var(--muted); padding: 2px 0; }
+.cal-dow.sun { color: var(--red); }
+.cal-dow.sat { color: var(--cyan); }
+.cal-cell {
+  min-height: 58px; border-radius: 8px; border: 1px solid transparent;
+  background: var(--card); color: var(--text2);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 3px 0; gap: 1px; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.cal-cell.blank { background: none; cursor: default; }
+.cal-cell.today { border-color: var(--muted); }
+.cal-cell.selected { border-color: var(--accent); }
+.cal-cell .d { font-size: 11px; }
+.cal-cell .rk { font-size: 18px; font-weight: 900; line-height: 1.1; }
+.cal-cell .bt { font-size: 9px; }
+.cal-legend { margin: 8px 0 14px; }
+.cal-day h3 { margin: 0 0 8px; font-size: 15px; }
+.cal-day .board { margin-bottom: 8px; }
