@@ -61,11 +61,11 @@
         </div>
         <div class="bar-track"><div id="run-progress" class="bar-fill"></div></div>
         <div class="run-meta">
-          <span>vs PB <b id="run-vs-pb">--</b></span>
+          <span>vs 今月PB <b id="run-vs-pb">--</b></span>
           <span>就寝予想 <b id="run-bed">--:--</b></span>
         </div>
       </div>
-      <div id="run-splits" class="splits"></div>
+      <div id="run-splits" class="splits" data-pb-label="今月PB差"></div>
     </div>
     <footer class="foot run-foot">
       <button id="btn-pause" class="sub-btn">⏸ 一時停止</button>
@@ -96,7 +96,7 @@
       <div id="result-rank" class="rank-block"></div>
       <div id="result-total" class="rta-timer center"></div>
       <div id="result-badges" class="badges"></div>
-      <div id="result-splits" class="splits"></div>
+      <div id="result-splits" class="splits" data-pb-label="今月PB差"></div>
       <div id="result-comment"></div>
       <div id="result-bed" class="bed-line"></div>
     </div>
@@ -128,8 +128,9 @@
         <span id="cal-title" class="cal-title"></span>
         <button id="cal-next" class="icon-btn" aria-label="次の月">›</button>
       </div>
+      <div id="cal-pb" class="cal-pb"></div>
       <div id="cal-grid" class="cal-grid"></div>
-      <div class="muted small cal-legend">文字はランク、下の時刻は就寝(緑=目標達成)。日付をタップするとその日のリザルトとひとことが見られます。</div>
+      <div class="muted small cal-legend">文字はランク、下の時刻は就寝(緑=目標達成)、👑はその月のPBの日。日付をタップするとその日のリザルトとひとことが見られます。</div>
       <div id="cal-day" class="cal-day"></div>
     </div>
   </section>
