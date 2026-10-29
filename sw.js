@@ -1,6 +1,6 @@
 // アプリ本体をキャッシュしてオフラインでも起動できるようにする。
 // ファイルを更新したら CACHE のバージョンを上げること。
-const CACHE = 'oyasumi-rta-v3';
+const CACHE = 'oyasumi-rta-v4';
 const ASSETS = [
   './',
   './index.html',

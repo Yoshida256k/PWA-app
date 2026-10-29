@@ -144,6 +144,20 @@ function pbCumulative(pb, ids) {
   return ids.map((id) => (c += segOf(pb, id) ?? taskById(id).targetMin * 60));
 }
 
+/* 期間別PB: 記録の日付(dayKeyOf)で今月・今年を判定する */
+const recordDay = (r) => dayKeyOf(r.startedAt ?? r.finishedAt);
+const monthPrefix = (y, m) => `${y}-${pad(m + 1)}-`; // m: 0-11
+const recordsIn = (prefix, records = store.records) => records.filter((r) => recordDay(r).startsWith(prefix));
+
+/** ある時刻が属する月・年のプレフィックス */
+function periodsAt(ms) {
+  const [y, m] = dayKeyOf(ms).split('-').map(Number);
+  return { month: monthPrefix(y, m - 1), year: `${y}-` };
+}
+
+/** ホーム・計測中に比べる「今月のPB」の対象記録(計測中はスタートした月) */
+const thisMonthRecords = (ms = Date.now()) => recordsIn(periodsAt(ms).month);
+
 /* ===== 画面遷移 ===== */
 
 const $ = (id) => document.getElementById(id);
@@ -174,23 +188,24 @@ function renderHome() {
   $('home-now').textContent = fmtClock(Date.now());
   $('home-target-bed').textContent = store.settings.targetBed;
 
-  const pb = pbRecord();
+  const monthRecs = thisMonthRecords();
+  const pb = pbRecord(monthRecs);
   const planSec = pb ? pb.totalSec : targetTotalSec();
   const endMs = Date.now() + planSec * 1000;
   const margin = targetBedMinutes() - nightMinutes(endMs);
   const fc = $('home-forecast');
   fc.className = 'forecast ' + (margin >= 0 ? 'ok' : 'ng');
-  fc.textContent = `今から${pb ? 'PBペース' : '目標ペース'}で終わると ${fmtClock(endMs)} ` +
+  fc.textContent = `今から${pb ? '今月PBペース' : '目標ペース'}で終わると ${fmtClock(endMs)} ` +
     (margin >= 0 ? `(あと${margin}分 余裕)` : `(${-margin}分 オーバー)`);
 
   const rows = tasks().map((t) => {
-    const b = bestSegment(t.id);
+    const b = bestSegment(t.id, monthRecs);
     return `<div class="pb-item"><span class="name">${esc(t.name)}</span>
-      <span class="muted small">目標 ${t.targetMin}分 / PB</span>
+      <span class="muted small">目標 ${t.targetMin}分 / 今月PB</span>
       <span class="pb">${b == null ? '--:--' : fmtRta(b)}</span></div>`;
   });
   rows.push(`<div class="pb-item total"><span class="name">合計</span>
-    <span class="muted small">目標 ${fmtRta(targetTotalSec())} / PB</span>
+    <span class="muted small">目標 ${fmtRta(targetTotalSec())} / 今月PB</span>
     <span class="pb">${pb ? fmtRta(pb.totalSec) : '--:--'}</span></div>`);
   $('home-pbs').innerHTML = rows.join('');
 
@@ -261,7 +276,8 @@ function tick() {
   const target = runTask(idx).targetMin * 60;
   const over = seg > target;
 
-  const pb = pbRecord();
+  const monthRecs = thisMonthRecords(run.t0);
+  const pb = pbRecord(monthRecs);
   const vsPb = pb ? total - pbCumulative(pb, run.order)[idx] : null;
 
   const totalEl = $('run-total');
@@ -288,7 +304,7 @@ function tick() {
   bedEl.textContent = fmtClock(bedMs);
   bedEl.className = nightMinutes(bedMs) <= targetBedMinutes() ? 'ahead' : 'behind';
 
-  renderSplits($('run-splits'), liveSplits(total), pb, idx);
+  renderSplits($('run-splits'), liveSplits(total), pb, monthRecs, idx);
 
   if (over && !run.alerted[idx] && !run.pausedAt) {
     run.alerted[idx] = true;
@@ -316,10 +332,10 @@ function liveSplits(totalSec) {
 
 /**
  * LiveSplit風スプリット表。
- * 差分 = 累積タイム - PBの累積(PBが無ければ目標の累積)。区間ベスト更新はゴールド表示。
+ * 差分 = 累積タイム - PBの累積(PBが無ければ目標の累積)。
+ * pool(比較対象の記録)の区間ベストを更新した行はゴールド表示。
  */
-function renderSplits(el, splits, pb, currentIdx = -1, excludeId = null) {
-  const others = store.records.filter((r) => r.id !== excludeId);
+function renderSplits(el, splits, pb, pool, currentIdx = -1) {
   const base = pb ? pbCumulative(pb, splits.map((s) => s.id)) : null;
   let cum = 0;
   let targetCum = 0;
@@ -332,7 +348,7 @@ function renderSplits(el, splits, pb, currentIdx = -1, excludeId = null) {
     }
     cum += s.sec;
     const delta = cum - cmp;
-    const best = bestSegment(s.id, others);
+    const best = bestSegment(s.id, pool);
     const gold = !s.live && best != null && s.sec < best;
     const cls = gold ? 'd-gold' : delta <= 0 ? 'd-ahead' : 'd-behind';
     // 進行中の行は差分がマイナスの間は出さない(LiveSplit と同じく遅れ始めたら表示)
@@ -341,7 +357,7 @@ function renderSplits(el, splits, pb, currentIdx = -1, excludeId = null) {
       <span class="name">${esc(s.name)} <span class="muted small">${fmtRta(s.sec)}</span></span>
       <span class="r ${cls}">${dText}</span><span class="r time">${fmtRta(cum)}</span></div>`;
   });
-  el.innerHTML = `<div class="split-head"><span>タスク</span><span class="r">${base ? 'PB差' : '目標差'}</span><span class="r">累積</span></div>` + rows.join('');
+  el.innerHTML = `<div class="split-head"><span>タスク</span><span class="r">${base ? (el.dataset.pbLabel || 'PB差') : '目標差'}</span><span class="r">累積</span></div>` + rows.join('');
 }
 
 function splitNow() {
@@ -378,17 +394,36 @@ function abortRun() {
 }
 
 // ゴール直後のリザルト表示用(ひとこと入力 → リザルト)
-let lastResult = null; // { id, prevPb, goldIds }
+let lastResult = null; // { id, monthRecs, pbBadge, goldIds }
+
+/** 更新したいちばん大きな期間のPBバッジ(歴代 > 今年 > 今月)。何も更新していなければ null */
+function pbBadgeFor(totalSec, records, periods) {
+  const tiers = [
+    ['👑', '歴代', records],
+    ['🏆', '今年', recordsIn(periods.year, records)],
+    ['⭐', '今月', recordsIn(periods.month, records)],
+  ];
+  for (const [icon, label, recs] of tiers) {
+    const prev = pbRecord(recs);
+    if (!prev) return `${icon} ${label}の初記録!`;
+    if (totalSec < prev.totalSec) return `${icon} ${label}のPB更新!`;
+  }
+  return null;
+}
 
 function finishRun() {
   const finishedAt = Date.now();
   const splits = liveSplits(0).map(({ live, ...s }) => s);
   const totalSec = run.marks[run.marks.length - 1] / 1000;
-  const prevPb = pbRecord();
-  const goldIds = splits.filter((s) => { const b = bestSegment(s.id); return b != null && s.sec < b; }).map((s) => s.id);
+  const startedAt = finishedAt - totalSec * 1000;
+  // 今月・今年はスタート時刻で判定(月末の深夜をまたいでも、始めた日の月の記録になる)
+  const periods = periodsAt(startedAt);
+  const monthRecs = recordsIn(periods.month);
+  const pbBadge = pbBadgeFor(totalSec, store.records, periods);
+  const goldIds = splits.filter((s) => { const b = bestSegment(s.id, monthRecs); return b != null && s.sec < b; }).map((s) => s.id);
   const record = {
     id: new Date(finishedAt).toISOString(),
-    startedAt: finishedAt - totalSec * 1000,
+    startedAt,
     finishedAt,
     splits,
     totalSec,
@@ -403,7 +438,7 @@ function finishRun() {
   saveJson(RUN_KEY, null);
   releaseWakeLock();
   fanfare();
-  lastResult = { id: record.id, prevPb, goldIds };
+  lastResult = { id: record.id, monthRecs, pbBadge, goldIds };
 
   go('comment');
   $('comment-total').innerHTML = `<span class="main">${fmtRta(totalSec)}</span><span class="cs">${fmtCentis(totalSec)}</span>`;
@@ -415,10 +450,10 @@ function commentDone() {
   if (!rec) { go('home'); return; }
   rec.comment = $('comment-input').value.trim();
   persist();
-  showResult(rec, lastResult.prevPb, lastResult.goldIds);
+  showResult(rec, lastResult);
 }
 
-function showResult(record, prevPb, goldIds) {
+function showResult(record, { monthRecs, pbBadge, goldIds }) {
   go('result');
   const r = computeRank(record.totalSec, record.targetTotalSec);
   $('result-rank').innerHTML = `<div class="rank-letter" style="color:${r.color}">${r.rank}</div>
@@ -426,13 +461,13 @@ function showResult(record, prevPb, goldIds) {
   $('result-total').innerHTML = `<span class="main">${fmtRta(record.totalSec)}</span><span class="cs">${fmtCentis(record.totalSec)}</span>`;
 
   const badges = [];
-  if (!prevPb || record.totalSec < prevPb.totalSec) badges.push('<span class="badge">👑 NEW PB!</span>');
-  for (const id of goldIds) badges.push(`<span class="badge">⭐ ${esc(taskById(id).name)} 区間ベスト</span>`);
+  if (pbBadge) badges.push(`<span class="badge">${pbBadge}</span>`);
+  for (const id of goldIds) badges.push(`<span class="badge">⚡ ${esc(taskById(id).name)} 今月の区間ベスト</span>`);
   const saved = record.targetTotalSec - record.totalSec;
   badges.push(`<span class="badge cyan">目標比 ${fmtDelta(-saved)}</span>`);
   $('result-badges').innerHTML = badges.join('');
 
-  renderSplits($('result-splits'), record.splits, prevPb, -1, record.id);
+  renderSplits($('result-splits'), record.splits, pbRecord(monthRecs), monthRecs);
   $('result-comment').innerHTML = record.comment ? `<div class="comment-box">💬 ${esc(record.comment)}</div>` : '';
   renderBedLine(record);
 }
@@ -638,6 +673,9 @@ function renderCalendar() {
     calSelected = todayKey;
   }
   $('cal-title').textContent = `${calYear}年${calMonth + 1}月`;
+  const monthRecs = recordsIn(monthPrefix(calYear, calMonth));
+  const monthPb = pbRecord(monthRecs);
+  renderPeriodPbs(monthRecs, recordsIn(`${calYear}-`));
 
   const byDay = new Map();
   for (const r of store.records) {
@@ -659,8 +697,9 @@ function renderCalendar() {
     const bed = [...recs].reverse().find((r) => r.bedAt)?.bedAt;
     const bedOk = bed && nightMinutes(bed) <= targetBedMinutes();
     const cls = ['cal-cell', key === todayKey ? 'today' : '', key === calSelected ? 'selected' : ''].join(' ');
+    const crown = monthPb && recs.includes(monthPb) ? '<span class="crown" aria-label="今月のPB">👑</span>' : '';
     cells.push(`<button class="${cls}" data-day="${key}">
-      <span class="d">${d}</span>
+      ${crown}<span class="d">${d}</span>
       ${best ? `<span class="rk" style="color:${rankColor(best.rank)}">${best.rank}</span>` : ''}
       ${bed ? `<span class="bt" style="color:${bedOk ? 'var(--accent)' : 'var(--red)'}">${fmtClock(bed)}</span>` : ''}
     </button>`);
@@ -672,6 +711,24 @@ function renderCalendar() {
   $('cal-day').innerHTML = `<h3>${sm}/${sd} のリザルト</h3>` + (recs.length
     ? `<div class="board">${recs.map((r) => boardRow(r, r.rank, fmtRta(r.totalSec))).join('')}</div>`
     : '<div class="empty">この日の記録はありません</div>');
+}
+
+/** 表示中の月・年のPB(ご飯・お風呂の区間ベストと合計)。タップでその記録の詳細を開く */
+function renderPeriodPbs(monthRecs, yearRecs) {
+  const bestRec = (recs, id) => {
+    let best = null;
+    for (const r of recs) {
+      const v = id ? segOf(r, id) : r.totalSec;
+      if (v != null && (!best || v < best.v)) best = { r, v };
+    }
+    return best;
+  };
+  const cell = (b) => (b
+    ? `<button class="pb-cell" data-record="${esc(b.r.id)}"><b>${fmtRta(b.v)}</b><span>${fmtDate(b.r.finishedAt).split(' ')[0]}</span></button>`
+    : '<span class="pb-cell empty-cell">--:--</span>');
+  const rows = [...tasks().map((t) => [esc(t.name), t.id]), ['合計', null]].map(([name, id]) =>
+    `<div class="pb-row${id ? '' : ' total'}"><span class="pb-name">${name}</span>${cell(bestRec(monthRecs, id))}${cell(bestRec(yearRecs, id))}</div>`);
+  $('cal-pb').innerHTML = `<div class="pb-row head"><span></span><span>⭐ ${calMonth + 1}月のPB</span><span>🏆 ${calYear}年のPB</span></div>` + rows.join('');
 }
 
 function moveMonth(diff) {
@@ -686,6 +743,10 @@ $('cal-next').addEventListener('click', () => moveMonth(1));
 $('cal-grid').addEventListener('click', (e) => {
   const c = e.target.closest('[data-day]');
   if (c) { calSelected = c.dataset.day; renderCalendar(); }
+});
+$('cal-pb').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-record]');
+  if (b) openDetail(b.dataset.record);
 });
 $('cal-day').addEventListener('click', (e) => {
   const row = e.target.closest('[data-record]');
@@ -708,7 +769,7 @@ function openDetail(id) {
     <div class="muted small" style="margin-bottom:8px">合計 ${fmtRta(r.totalSec)} ・ 目標 ${fmtRta(r.targetTotalSec)} ・ ${bed}</div>
     <div id="detail-splits" class="splits"></div>
     <div class="muted small" style="margin-top:6px">差分はこの記録より前の PB との比較です</div>`;
-  renderSplits($('detail-splits'), r.splits, pbRecord(others), -1, id);
+  renderSplits($('detail-splits'), r.splits, pbRecord(others), others);
   $('detail-comment').value = r.comment || '';
   $('detail').showModal();
 }

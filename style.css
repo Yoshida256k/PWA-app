@@ -250,3 +250,22 @@ dialog::backdrop { background: rgba(0, 0, 0, .7); }
 .cal-legend { margin: 8px 0 14px; }
 .cal-day h3 { margin: 0 0 8px; font-size: 15px; }
 .cal-day .board { margin-bottom: 8px; }
+
+/* 期間別PB(カレンダー) */
+.cal-pb { background: var(--card); border-radius: 10px; padding: 4px 0; margin-bottom: 12px; }
+.pb-row { display: grid; grid-template-columns: 64px 1fr 1fr; gap: 6px; align-items: center; padding: 6px 10px; }
+.pb-row.head { color: var(--muted); font-size: 11px; font-weight: bold; text-align: center; padding-bottom: 2px; }
+.pb-row + .pb-row { border-top: .5px solid var(--button); }
+.pb-row.head + .pb-row { border-top: 0; }
+.pb-name { font-weight: bold; font-size: 13px; }
+.pb-row.total .pb-name { color: var(--accent); }
+.pb-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  background: var(--item); border: 0; border-radius: 8px; padding: 6px 0; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.pb-cell b { color: var(--yellow); font-size: 17px; }
+.pb-cell span { color: var(--muted); font-size: 10px; }
+.pb-cell.empty-cell { color: var(--muted); cursor: default; }
+.cal-cell { position: relative; }
+.cal-cell .crown { position: absolute; top: 1px; right: 2px; font-size: 10px; }
