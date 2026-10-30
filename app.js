@@ -748,12 +748,28 @@ function openDetail(id) {
     <div class="muted small" style="margin-top:6px">差分はこの記録より前の PB との比較です</div>`;
   renderSplits($('detail-splits'), r.splits, pbRecord(others), others);
   $('detail-comment').value = r.comment || '';
+  $('detail-bed').value = fmtClock(r.bedAt ?? r.finishedAt);
   $('detail').showModal();
+}
+
+/**
+ * 「23:22」のような入力を、その記録の就寝日時にする。
+ * 開始(玄関オープン)より後でいちばん近いその時刻 = 0:30 なら翌日の 0:30。
+ */
+function bedTimeFromInput(r, hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
+  if (!m) return null;
+  const start = r.startedAt ?? r.finishedAt - r.totalSec * 1000;
+  const d = new Date(start);
+  d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  if (d.getTime() < start) d.setDate(d.getDate() + 1);
+  return d.getTime();
 }
 
 function refreshAfterDetail() {
   if (currentScreen === 'history') renderHistory();
   if (currentScreen === 'calendar') renderCalendar();
+  if (currentScreen === 'analysis') renderAnalysis();
 }
 
 $('btn-detail-close').addEventListener('click', () => $('detail').close());
@@ -761,6 +777,8 @@ $('btn-detail-save').addEventListener('click', () => {
   const r = store.records.find((x) => x.id === detailId);
   if (!r) return;
   r.comment = $('detail-comment').value.trim();
+  const bed = bedTimeFromInput(r, $('detail-bed').value);
+  if (bed != null) r.bedAt = bed;
   persist();
   $('detail').close();
   refreshAfterDetail();

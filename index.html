@@ -181,10 +181,13 @@
   <!-- 記録詳細 -->
   <dialog id="detail">
     <div id="detail-body"></div>
+    <label class="comment-label" for="detail-bed">🌙 就寝時刻</label>
+    <input id="detail-bed" class="comment-input" type="time" required>
+    <div class="muted small">押し忘れなどで実際に寝た時刻と違うときは直せます(分析・カレンダーに反映)</div>
     <label class="comment-label" for="detail-comment">ひとこと</label>
     <textarea id="detail-comment" class="comment-input" maxlength="200" rows="3" placeholder="(なし)"></textarea>
     <div class="dialog-actions">
-      <button id="btn-detail-save" class="sub-btn">ひとことを保存</button>
+      <button id="btn-detail-save" class="sub-btn">保存</button>
       <button id="btn-detail-delete" class="sub-btn danger">削除</button>
       <button id="btn-detail-close" class="sub-btn">閉じる</button>
     </div>
