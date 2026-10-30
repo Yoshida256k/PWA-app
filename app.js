@@ -169,10 +169,12 @@ let currentScreen = 'home';
 function go(name) {
   for (const s of document.querySelectorAll('.screen')) s.hidden = s.id !== name;
   currentScreen = name;
+  if (typeof hideTip === 'function') hideTip();
   if (name === 'home') renderHome();
   if (name === 'history') renderHistory();
   if (name === 'settings') renderSettings();
   if (name === 'calendar') renderCalendar();
+  if (name === 'analysis') renderAnalysis();
 }
 
 document.addEventListener('click', (e) => {
@@ -575,18 +577,20 @@ function renderHistory() {
       .filter((e) => e.sec != null)
       .sort((a, b) => a.sec - b.sec);
     const target = id ? taskById(id).targetMin * 60 : targetTotalSec();
-    body.innerHTML = trendChart(store.records.slice(-30).map(valueOf), target, 'time') +
+    body.innerHTML = '<div class="chart" id="history-trend"></div>' +
       `<div class="board">${entries.slice(0, 50).map((e, n) => boardRow(e.r, n + 1, fmtRta(e.sec))).join('')}</div>`;
+    drawHistoryTrend($('history-trend'), store.records, valueOf, target, 'time');
   } else if (historyTab === 'bed') {
     const withBed = store.records.filter((r) => r.bedAt);
     const entries = [...withBed].reverse();
-    body.innerHTML = trendChart(withBed.slice(-30).map((r) => nightMinutes(r.bedAt)), targetBedMinutes(), 'clock') +
+    body.innerHTML = '<div class="chart" id="history-trend"></div>' +
       (entries.length
         ? `<div class="board">${entries.map((r) => {
           const ok = nightMinutes(r.bedAt) <= targetBedMinutes();
           return boardRow(r, ok ? '✓' : '✗', `<span style="color:${ok ? 'var(--accent)' : 'var(--red)'}">${fmtClock(r.bedAt)}</span>`, true);
         }).join('')}</div>`
         : '<div class="empty">就寝の記録はまだありません</div>');
+    drawHistoryTrend($('history-trend'), withBed, (r) => nightMinutes(r.bedAt), targetBedMinutes(), 'clock');
   } else {
     const sorters = {
       newest: (a, b) => b.finishedAt - a.finishedAt,
@@ -618,29 +622,6 @@ function boardRow(r, place, timeHtml, plainPlace = false) {
     <span class="place">${place}</span>
     <span><div>${recordDate(r)} ${timeSpan(r)}</div><div class="sub">${split}</div>${comment}</span>
     <span class="time">${timeHtml}</span></button>`;
-}
-
-/** 直近の推移グラフ(目標ラインつき)。kind=time は秒、clock は正午からの分 */
-function trendChart(values, target, kind) {
-  const vals = values.map((v) => (v == null ? null : v));
-  const real = vals.filter((v) => v != null);
-  if (real.length < 2) return '';
-  const W = 320, H = 120, P = 8;
-  const lo = Math.min(...real, target);
-  const hi = Math.max(...real, target);
-  const span = hi - lo || 1;
-  const x = (i) => P + (i * (W - 2 * P)) / (vals.length - 1);
-  const y = (v) => H - P - ((v - lo) / span) * (H - 2 * P);
-  const pts = vals.map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean);
-  const label = (v) => (kind === 'clock' ? `${pad(Math.floor(v / 60) % 24)}:${pad(Math.round(v % 60))}` : fmtRta(v));
-  const dots = vals.map((v, i) => v == null ? '' :
-    `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="${v <= target ? 'var(--accent)' : 'var(--red)'}"/>`).join('');
-  return `<div class="chart"><div class="muted small">直近${vals.length}回の推移(下ほど良い) — 点線: 目標 ${label(target)}</div>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="推移グラフ">
-      <line x1="${P}" x2="${W - P}" y1="${y(target)}" y2="${y(target)}" stroke="var(--yellow)" stroke-dasharray="4 4"/>
-      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--text2)" stroke-width="1.5"/>
-      ${dots}
-    </svg></div>`;
 }
 
 $('history-tabs').addEventListener('click', (e) => {
