@@ -38,7 +38,10 @@ const store = (() => {
   const data = loadJson(STORE_KEY, {});
   const settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
   settings.tasks = DEFAULT_SETTINGS.tasks.map((t, i) => ({ ...t, ...((data.settings?.tasks || [])[i] || {}) }));
-  return { settings, records: Array.isArray(data.records) ? data.records : [] };
+  const records = Array.isArray(data.records) ? data.records : [];
+  // 2つ目のタスクは寝る直前まで(ゴール = 就寝)。就寝を押し忘れた古い記録はゴール時刻で補う
+  for (const r of records) if (!r.bedAt) r.bedAt = r.finishedAt;
+  return { settings, records };
 })();
 
 function persist() {
@@ -233,7 +236,8 @@ setInterval(() => { if (currentScreen === 'home') renderHome(); }, 15000);
 
 /* ===== タイマー(壁時計方式: 経過 = (停止時刻 or 現在) - t0) ===== */
 
-// { t0, pausedAt, marks: [累積ms], alerted: [bool], order: [taskId] }
+// { t0, startedAt, pausedAt, marks: [累積ms], alerted: [bool], order: [taskId] }
+// t0 は一時停止のたびにずらす計算用。startedAt は玄関を開けた実際の時刻
 let run = loadJson(RUN_KEY, null);
 let rafId = 0;
 let wakeLock = null;
@@ -243,7 +247,8 @@ const runTask = (k) => taskById(run.order[k]);
 
 function startRun() {
   unlockAudio();
-  run = { t0: Date.now(), pausedAt: null, marks: [], alerted: [], order: orderFrom(store.settings.firstTask) };
+  const now = Date.now();
+  run = { t0: now, startedAt: now, pausedAt: null, marks: [], alerted: [], order: orderFrom(store.settings.firstTask) };
   saveJson(RUN_KEY, run);
   enterRun();
 }
@@ -262,7 +267,7 @@ function renderRunStatic() {
   const t = runTask(idx);
   $('run-seg-name').textContent = t.name;
   $('run-seg-target').textContent = `${t.targetMin}分`;
-  $('btn-split').textContent = idx === run.order.length - 1 ? 'ゴール！ 🏁' : `${t.name} 完了 →`;
+  $('btn-split').textContent = idx === run.order.length - 1 ? 'おやすみゴール 🌙' : `${t.name} 完了 →`;
   $('btn-pause').textContent = run.pausedAt ? '▶ 再開' : '⏸ 一時停止';
   $('run').classList.toggle('paused', !!run.pausedAt);
 }
@@ -415,7 +420,7 @@ function finishRun() {
   const finishedAt = Date.now();
   const splits = liveSplits(0).map(({ live, ...s }) => s);
   const totalSec = run.marks[run.marks.length - 1] / 1000;
-  const startedAt = finishedAt - totalSec * 1000;
+  const startedAt = run.startedAt ?? finishedAt - totalSec * 1000;
   // 今月・今年はスタート時刻で判定(月末の深夜をまたいでも、始めた日の月の記録になる)
   const periods = periodsAt(startedAt);
   const monthRecs = recordsIn(periods.month);
@@ -429,7 +434,7 @@ function finishRun() {
     totalSec,
     targetTotalSec: targetTotalSec(),
     rank: computeRank(totalSec, targetTotalSec()).rank,
-    bedAt: null,
+    bedAt: finishedAt, // 2つ目のタスクは寝る直前までなので、ゴール = 就寝
     comment: '',
   };
   store.records.push(record);
@@ -459,6 +464,7 @@ function showResult(record, { monthRecs, pbBadge, goldIds }) {
   $('result-rank').innerHTML = `<div class="rank-letter" style="color:${r.color}">${r.rank}</div>
     <div class="rank-title" style="color:${r.color}">${r.title}</div>`;
   $('result-total').innerHTML = `<span class="main">${fmtRta(record.totalSec)}</span><span class="cs">${fmtCentis(record.totalSec)}</span>`;
+  $('result-times').innerHTML = `<div class="muted small">${recordDate(record)}</div>🚪 ${fmtClock(record.startedAt)} スタート → 🌙 ${fmtClock(record.finishedAt)} ゴール`;
 
   const badges = [];
   if (pbBadge) badges.push(`<span class="badge">${pbBadge}</span>`);
@@ -473,27 +479,10 @@ function showResult(record, { monthRecs, pbBadge, goldIds }) {
 }
 
 function renderBedLine(record) {
-  const el = $('result-bed');
-  const btn = $('btn-sleep');
-  if (record.bedAt) {
-    const ok = nightMinutes(record.bedAt) <= targetBedMinutes();
-    el.innerHTML = `🌙 就寝 <span style="color:${ok ? 'var(--accent)' : 'var(--red)'}">${fmtClock(record.bedAt)}</span>` +
-      (ok ? ' — 目標達成！おやすみなさい' : ` — 目標 ${store.settings.targetBed}`);
-    btn.disabled = true;
-    btn.textContent = '記録しました';
-  } else {
-    el.innerHTML = '<span class="muted small">歯みがきなどが終わって布団に入ったら押してください</span>';
-    btn.disabled = false;
-    btn.textContent = '🌙 おやすみ（就寝を記録）';
-  }
-}
-
-function recordSleep() {
-  const rec = store.records.find((r) => r.id === lastResult?.id);
-  if (!rec) return;
-  rec.bedAt = Date.now();
-  persist();
-  renderBedLine(rec);
+  const diff = targetBedMinutes() - nightMinutes(record.bedAt);
+  const ok = diff >= 0;
+  $('result-bed').innerHTML = `🌙 就寝 <span style="color:${ok ? 'var(--accent)' : 'var(--red)'}">${fmtClock(record.bedAt)}</span>` +
+    (ok ? ` — 目標より${diff}分早い！おやすみなさい` : ` — 目標 ${store.settings.targetBed} から${-diff}分オーバー`);
 }
 
 $('btn-start').addEventListener('click', startRun);
@@ -501,7 +490,6 @@ $('btn-split').addEventListener('click', splitNow);
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-abort').addEventListener('click', abortRun);
 $('btn-comment-done').addEventListener('click', commentDone);
-$('btn-sleep').addEventListener('click', recordSleep);
 $('btn-result-home').addEventListener('click', () => go('home'));
 
 /* ===== 画面スリープ防止 ===== */
@@ -612,14 +600,23 @@ function renderHistory() {
   }
 }
 
+/** 「🚪21:22 → 🏁23:09」。就寝をゴールと別に記録した古い記録は 🌙 も付ける */
+function timeSpan(r) {
+  const start = r.startedAt ?? r.finishedAt - r.totalSec * 1000;
+  let text = `🚪${fmtClock(start)} → 🏁${fmtClock(r.finishedAt)}`;
+  if (r.bedAt && Math.abs(r.bedAt - r.finishedAt) > 60 * 1000) text += ` ・🌙${fmtClock(r.bedAt)}`;
+  return text;
+}
+
+const recordDate = (r) => fmtDate(r.startedAt ?? r.finishedAt).split(' ')[0];
+
 function boardRow(r, place, timeHtml, plainPlace = false) {
   const pcls = !plainPlace && typeof place === 'number' && place <= 3 ? ` p${place}` : '';
   const split = r.splits.map((s) => `${esc(s.name)} ${fmtRta(s.sec)}`).join(' → ');
-  const bed = r.bedAt ? ` ・🌙${fmtClock(r.bedAt)}` : '';
   const comment = r.comment ? `<div class="sub">💬 ${esc(r.comment)}</div>` : '';
   return `<button class="board-row${pcls}" data-record="${esc(r.id)}">
     <span class="place">${place}</span>
-    <span><div>${fmtDate(r.finishedAt)}${bed}</div><div class="sub">${split}</div>${comment}</span>
+    <span><div>${recordDate(r)} ${timeSpan(r)}</div><div class="sub">${split}</div>${comment}</span>
     <span class="time">${timeHtml}</span></button>`;
 }
 
@@ -763,10 +760,9 @@ function openDetail(id) {
   detailId = id;
   const others = store.records.filter((x) => x.id !== id && x.finishedAt < r.finishedAt);
   const rank = computeRank(r.totalSec, r.targetTotalSec);
-  const bed = r.bedAt ? `🌙 就寝 ${fmtClock(r.bedAt)}` : '就寝の記録なし';
-  $('detail-body').innerHTML = `<div class="detail-title">${fmtDate(r.finishedAt)}
+  $('detail-body').innerHTML = `<div class="detail-title">${recordDate(r)} ${timeSpan(r)}
       <span style="color:${rank.color}"> ランク ${rank.rank}</span></div>
-    <div class="muted small" style="margin-bottom:8px">合計 ${fmtRta(r.totalSec)} ・ 目標 ${fmtRta(r.targetTotalSec)} ・ ${bed}</div>
+    <div class="muted small" style="margin-bottom:8px">合計 ${fmtRta(r.totalSec)} ・ 目標 ${fmtRta(r.targetTotalSec)}</div>
     <div id="detail-splits" class="splits"></div>
     <div class="muted small" style="margin-top:6px">差分はこの記録より前の PB との比較です</div>`;
   renderSplits($('detail-splits'), r.splits, pbRecord(others), others);
