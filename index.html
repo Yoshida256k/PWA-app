@@ -18,6 +18,7 @@
   <section id="home" class="screen">
     <header class="bar">
       <span class="bar-title">はよ寝てやご飯やで</span>
+      <button class="icon-btn" data-go="analysis" aria-label="分析">📊</button>
       <button class="icon-btn" data-go="calendar" aria-label="カレンダー">📅</button>
       <button class="icon-btn" data-go="history" aria-label="歴代記録">🏆</button>
       <button class="icon-btn" data-go="settings" aria-label="設定">⚙</button>
@@ -116,6 +117,16 @@
     <div class="content" id="history-body"></div>
   </section>
 
+  <!-- 分析 -->
+  <section id="analysis" class="screen" hidden>
+    <header class="bar">
+      <button class="icon-btn" data-go="home" aria-label="戻る">←</button>
+      <span class="bar-title">分析</span>
+    </header>
+    <div class="tabs" id="analysis-filter" role="group" aria-label="集計する期間"></div>
+    <div class="content" id="analysis-body"></div>
+  </section>
+
   <!-- カレンダー -->
   <section id="calendar" class="screen" hidden>
     <header class="bar">
@@ -180,5 +191,6 @@
   </dialog>
 
   <script src="app.js"></script>
+  <script src="analysis.js"></script>
 </body>
 </html>
