@@ -1,5 +1,26 @@
 'use strict';
 
+/* ===== バージョン ===== */
+
+// 更新のたびに sw.js の VERSION、index.html の ?v= と同じ番号に上げる
+const APP_VERSION = 9;
+const APP_UPDATED = '2026-10-31';
+
+/** 画面(index.html)が読み込もうとした版。JS の版と違えば古いファイルが混ざっている */
+function htmlVersion() {
+  const src = document.querySelector('script[src*="app.js"]')?.getAttribute('src') || '';
+  return new URL(src, location.href).searchParams.get('v');
+}
+
+function renderVersion(el) {
+  const html = htmlVersion();
+  const mixed = html !== String(APP_VERSION);
+  el.classList.toggle('mixed', mixed);
+  el.textContent = mixed
+    ? `⚠ 古いファイルが混ざっています(画面 ver ${html ?? '?'} / 動作 ver ${APP_VERSION})。アプリを閉じて開き直してください`
+    : `ver ${APP_VERSION}（${APP_UPDATED} 更新）`;
+}
+
 /* ===== 保存 ===== */
 
 const STORE_KEY = 'oyasumi_rta_v1';
@@ -218,6 +239,7 @@ function renderHome() {
   const recent = store.records.filter((r) => r.bedAt).slice(-7);
   const ok = recent.filter((r) => nightMinutes(r.bedAt) <= targetBedMinutes()).length;
   $('home-bed-ok').textContent = recent.length ? `${ok}/${recent.length}` : '-';
+  renderVersion($('home-version'));
 
   $('order-select').innerHTML = tasks().map((t) => {
     const label = orderFrom(t.id).map((id) => esc(taskById(id).name)).join(' → ');
@@ -794,6 +816,14 @@ $('btn-detail-delete').addEventListener('click', () => {
 /* ===== 設定 ===== */
 
 function renderSettings() {
+  renderVersion($('settings-version'));
+  // オフライン用に保存されている版(Service Worker のキャッシュ名)
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      const v = keys.filter((k) => k.startsWith('oyasumi-rta-v')).map((k) => k.replace('oyasumi-rta-', '')).join(', ');
+      $('settings-cache').textContent = `オフライン用キャッシュ: ${v || 'なし'}`;
+    }).catch(() => {});
+  }
   const f = $('settings-form');
   f.targetBed.value = store.settings.targetBed;
   f.sound.checked = store.settings.sound;
