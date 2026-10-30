@@ -1,7 +1,7 @@
 // アプリ本体をキャッシュしてオフラインでも起動できるようにする。
 // ファイルを更新したら、CACHE と index.html の ?v= を同じ番号に上げること。
 // (?v= があることで、新しい index.html は必ず新しい JS/CSS を読む。古い JS と混ざらない)
-const VERSION = 8;
+const VERSION = 9;
 const CACHE = `oyasumi-rta-v${VERSION}`;
 const ASSETS = [
   './',

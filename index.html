@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <!-- ホーム -->
@@ -37,6 +37,7 @@
         <div class="stat"><div class="muted small">挑戦回数</div><div id="home-attempts" class="stat-val">0</div></div>
         <div class="stat"><div class="muted small">直近7回の目標達成</div><div id="home-bed-ok" class="stat-val">-</div></div>
       </div>
+      <div id="home-version" class="version"></div>
     </div>
     <footer class="foot">
       <div class="muted small center-text">どっちからやる？</div>
@@ -175,6 +176,11 @@
         <label class="sub-btn wide file-btn">記録を読み込む<input id="input-import" type="file" accept="application/json,.json" hidden></label>
         <button id="btn-clear" class="sub-btn wide danger">全記録を削除</button>
       </div>
+      <div class="form">
+        <h3>バージョン</h3>
+        <div id="settings-version" class="version left"></div>
+        <div id="settings-cache" class="muted small"></div>
+      </div>
     </div>
   </section>
 
@@ -193,7 +199,7 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=8"></script>
-  <script src="analysis.js?v=8"></script>
+  <script src="app.js?v=9"></script>
+  <script src="analysis.js?v=9"></script>
 </body>
 </html>
