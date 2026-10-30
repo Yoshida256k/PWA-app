@@ -28,7 +28,7 @@
 ローカルで試す場合: `python3 -m http.server` を実行して http://localhost:8000 を開く。
 
 ## ファイルを更新したとき
-`sw.js` の `CACHE` のバージョン(`oyasumi-rta-v7`)を上げると、古いキャッシュが入れ替わります。
+`sw.js` の `VERSION` と、`index.html` で読み込んでいる `style.css?v=` `app.js?v=` `analysis.js?v=` の番号を同じ値に上げてください。HTMLだけ新しくなって古いJSが動く、という食い違いを防ぎます。
 
 ## Claude Code スキル
 - `.claude/skills/progressive-web-app/` — [secondsky/claude-skills](https://github.com/secondsky/claude-skills) (MIT) の PWA スキル
