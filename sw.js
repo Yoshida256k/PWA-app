@@ -1,8 +1,9 @@
 // アプリ本体をキャッシュしてオフラインでも起動できるようにする。
 // ファイルを更新したら、CACHE と index.html の ?v= を同じ番号に上げること。
 // (?v= があることで、新しい index.html は必ず新しい JS/CSS を読む。古い JS と混ざらない)
-const VERSION = 9;
-const CACHE = `oyasumi-rta-v${VERSION}`;
+const VERSION = 10;
+const PREFIX = 'oyasumi-rta-v';
+const CACHE = `${PREFIX}${VERSION}`;
 const ASSETS = [
   './',
   './index.html',
@@ -25,17 +26,22 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// 同じサイトの TEMPO(tempo/)のキャッシュは消さない(自分の古い版だけ消す)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
 // ネットワーク優先(更新をすぐ反映)、オフライン時はキャッシュ
+// tempo/ は別アプリ(自分の Service Worker を持つ)なので手を出さない
+const TEMPO_PATH = new URL('./tempo/', self.registration.scope).pathname;
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (new URL(event.request.url).pathname.startsWith(TEMPO_PATH)) return;
   event.respondWith(
     fetch(event.request, { cache: 'no-cache' }) // 毎回サーバーに更新を確認(古い HTTP キャッシュを使わない)
       .then((res) => {

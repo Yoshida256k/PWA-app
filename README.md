@@ -30,5 +30,10 @@
 ## ファイルを更新したとき
 `sw.js` の `VERSION`、`app.js` の `APP_VERSION`(と `APP_UPDATED`)、`index.html` で読み込んでいる `style.css?v=` `app.js?v=` `analysis.js?v=` の番号を同じ値に上げてください。ホームと設定画面に ver が表示され、画面とJSの版が食い違うと警告が出ます。HTMLだけ新しくなって古いJSが動く、という食い違いを防ぎます。
 
+## TEMPO(別アプリ)
+`tempo/` に、1ページ・大問ごとに NEXT を押して平均解答時間を測るダレ防止タイマー **TEMPO** があります。
+公開URLは https://yoshida256k.github.io/PWA-app/tempo/ で、はよ寝てやとは別にホーム画面へ追加できます。
+記録(`tempo_v1_*`)・キャッシュ(`tempo-v*`)・Service Worker は TEMPO 専用で、はよ寝てや側の `sw.js` は `tempo/` の通信に手を出しません。
+
 ## Claude Code スキル
 - `.claude/skills/progressive-web-app/` — [secondsky/claude-skills](https://github.com/secondsky/claude-skills) (MIT) の PWA スキル

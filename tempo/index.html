@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="TEMPO">
+  <title>TEMPO</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <!-- スタート -->
+  <section id="setup" class="screen">
+    <header class="bar">
+      <span class="logo" aria-label="TEMPO"><span class="logo-mark" aria-hidden="true"></span>TEMPO</span>
+      <button class="icon-btn" data-go="history" aria-label="履歴">LOG</button>
+      <button class="icon-btn" data-go="settings" aria-label="設定">SET</button>
+    </header>
+    <div class="content">
+      <p class="lead">1つ終えるごとに NEXT。<br>終わりなし。テンポよく。</p>
+
+      <label class="field">
+        <span class="field-label">MATERIAL<small>教材名(任意)</small></span>
+        <input id="setup-title" type="text" maxlength="24" placeholder="例: SPI 非言語" list="title-list" autocomplete="off">
+        <datalist id="title-list"></datalist>
+      </label>
+
+      <div class="field">
+        <span class="field-label">UNIT<small>1回の単位</small></span>
+        <div id="setup-unit" class="seg" role="radiogroup" aria-label="単位"></div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">TARGET<small>1<span class="unit-name">ページ</span>あたりの目標時間</small></span>
+        <div class="target">
+          <button class="step" data-step="-60" aria-label="1分減らす">−1m</button>
+          <button class="step" data-step="-10" aria-label="10秒減らす">−10s</button>
+          <div class="target-input">
+            <input id="setup-min" type="number" inputmode="numeric" min="0" max="180" aria-label="分">
+            <span>:</span>
+            <input id="setup-sec" type="number" inputmode="numeric" min="0" max="59" step="5" aria-label="秒">
+          </div>
+          <button class="step" data-step="10" aria-label="10秒増やす">+10s</button>
+          <button class="step" data-step="60" aria-label="1分増やす">+1m</button>
+        </div>
+      </div>
+
+      <label class="toggle">
+        <input id="setup-library" type="checkbox">
+        <span class="toggle-box" aria-hidden="true"></span>
+        <span>図書館モード<small>音もバイブもなし・画面だけで知らせる</small></span>
+      </label>
+
+      <div id="setup-last" class="last"></div>
+    </div>
+    <footer class="foot">
+      <button id="btn-start" class="primary">START</button>
+    </footer>
+  </section>
+
+  <!-- 計測 -->
+  <section id="play" class="screen" hidden>
+    <header class="bar play-bar">
+      <span id="play-title" class="play-title"></span>
+      <span id="play-total" class="play-total num">0:00</span>
+      <button id="btn-library" class="icon-btn" aria-pressed="false" aria-label="図書館モード">LIB</button>
+      <button id="btn-exit" class="exit" aria-label="終了">EXIT</button>
+    </header>
+    <div id="banner" class="banner" role="status" aria-live="polite"></div>
+    <div class="play-main">
+      <div class="ring-wrap">
+        <svg id="ring" class="ring" viewBox="0 0 200 200" aria-hidden="true">
+          <g id="ring-ticks"></g>
+          <circle class="ring-track" cx="100" cy="100" r="84"/>
+          <circle id="ring-1" class="ring-arc" cx="100" cy="100" r="84"/>
+          <circle id="ring-2" class="ring-arc over" cx="100" cy="100" r="72"/>
+        </svg>
+        <div class="ring-center">
+          <div id="play-no" class="ring-no">No. 1</div>
+          <div id="play-lap" class="ring-lap num">0:00</div>
+          <div id="play-target" class="ring-target num"></div>
+        </div>
+      </div>
+      <div id="play-stats" class="stats"></div>
+      <div id="play-bars" class="bars" aria-label="各回の時間"></div>
+    </div>
+    <footer class="foot play-foot">
+      <div class="sub-row">
+        <button id="btn-pause" class="ghost">PAUSE</button>
+        <button id="btn-undo" class="ghost">UNDO</button>
+      </div>
+      <button id="btn-next" class="primary next">NEXT</button>
+    </footer>
+  </section>
+
+  <!-- リザルト -->
+  <section id="result" class="screen" hidden>
+    <header class="bar"><span class="logo"><span class="logo-mark" aria-hidden="true"></span>RESULT</span></header>
+    <div class="content">
+      <div id="result-head" class="result-head"></div>
+      <div id="result-stats" class="stats wide"></div>
+      <div id="result-bars" class="bars tall"></div>
+      <label class="field">
+        <span class="field-label">COMMENT<small>ひとこと</small></span>
+        <textarea id="result-comment" rows="3" maxlength="200" placeholder="例: 後半ダレた。図形問題で止まりがち"></textarea>
+      </label>
+    </div>
+    <footer class="foot">
+      <button id="btn-save" class="primary">記録して終了</button>
+    </footer>
+  </section>
+
+  <!-- 履歴 -->
+  <section id="history" class="screen" hidden>
+    <header class="bar">
+      <button class="icon-btn" data-go="setup" aria-label="戻る">←</button>
+      <span class="logo">LOG</span>
+    </header>
+    <div class="content" id="history-body"></div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="settings" class="screen" hidden>
+    <header class="bar">
+      <button class="icon-btn" data-go="setup" aria-label="戻る">←</button>
+      <span class="logo">SETTINGS</span>
+    </header>
+    <div class="content">
+      <form id="settings-form" class="form">
+        <h3>警告のタイミング</h3>
+        <label class="num-field"><span>注意<small>目標の何%を超えたら</small></span><span><input name="cautionPct" type="number" min="50" max="300" step="5" required>%</span></label>
+        <label class="num-field"><span>警告(ダレ)<small>目標の何%を超えたら・画面反転</small></span><span><input name="warnPct" type="number" min="60" max="500" step="5" required>%</span></label>
+        <label class="num-field"><span>ペース低下<small>直近の平均が全体平均の何%以上</small></span><span><input name="slumpPct" type="number" min="105" max="300" step="5" required>%</span></label>
+        <label class="num-field"><span>直近として見る数<small>ペース低下の判定に使う</small></span><span><input name="slumpWindow" type="number" min="2" max="10" required>回</span></label>
+        <h3>通知</h3>
+        <label class="toggle"><input name="sound" type="checkbox"><span class="toggle-box" aria-hidden="true"></span><span>音とバイブ<small>図書館モード中は常にオフ</small></span></label>
+        <label class="toggle"><input name="libraryDefault" type="checkbox"><span class="toggle-box" aria-hidden="true"></span><span>図書館モードを最初からオン</span></label>
+        <button type="submit" class="primary">保存</button>
+      </form>
+      <div class="form">
+        <h3>バックアップ</h3>
+        <p class="muted">記録はこの端末のブラウザ内に保存されます。</p>
+        <button id="btn-export" class="ghost wide">書き出す (JSON)</button>
+        <label class="ghost wide file-btn">読み込む<input id="input-import" type="file" accept="application/json,.json" hidden></label>
+        <button id="btn-clear" class="ghost wide danger">全記録を削除</button>
+        <h3>バージョン</h3>
+        <div id="version" class="version"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 記録詳細 -->
+  <dialog id="detail">
+    <div id="detail-body"></div>
+    <label class="field">
+      <span class="field-label">COMMENT<small>ひとこと</small></span>
+      <textarea id="detail-comment" rows="3" maxlength="200"></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button id="btn-detail-delete" class="ghost danger">削除</button>
+      <button id="btn-detail-save" class="ghost">保存</button>
+      <button id="btn-detail-close" class="ghost">閉じる</button>
+    </div>
+  </dialog>
+
+  <div class="frame" aria-hidden="true"></div>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>

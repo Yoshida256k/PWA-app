@@ -1,0 +1,266 @@
+/* TEMPO — 白黒・幾何学。角は丸めず、1px の罫線と方眼で組む */
+:root {
+  --bg: #ffffff;
+  --ink: #0a0a0a;
+  --line: #d4d4d4;   /* 罫線・未達のトラック */
+  --muted: #7a7a7a;  /* 補足の文字 */
+  --soft: #bdbdbd;   /* 目標内の棒 */
+  --grid: #f1f1f1;   /* 方眼 */
+  color-scheme: light;
+}
+/* 図書館モード: 黒基調でまぶしさを抑える */
+body.lib {
+  --bg: #0a0a0a;
+  --ink: #f2f2f2;
+  --line: #333333;
+  --muted: #8c8c8c;
+  --soft: #5a5a5a;
+  --grid: #141414;
+  color-scheme: dark;
+}
+/* 警告(通常モード): 画面全体の白黒を反転 */
+body.invert:not(.lib) {
+  --bg: #0a0a0a;
+  --ink: #ffffff;
+  --line: #3a3a3a;
+  --muted: #a0a0a0;
+  --soft: #5f5f5f;
+  --grid: #161616;
+}
+
+* { box-sizing: border-box; border-radius: 0; }
+html, body { height: 100%; margin: 0; }
+body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  transition: background-color .25s, color .25s;
+}
+button, input, textarea { font: inherit; color: inherit; }
+.num, .stat-val, .bar-num { font-variant-numeric: tabular-nums; }
+
+.screen {
+  display: flex; flex-direction: column;
+  height: 100dvh; max-width: 520px; margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
+}
+.screen[hidden] { display: none; }
+
+/* ---- バー ---- */
+.bar {
+  display: flex; align-items: center; gap: 6px;
+  height: 52px; padding: 0 12px;
+  border-bottom: 1px solid var(--ink);
+  background: var(--bg);
+}
+.logo {
+  flex: 1; display: inline-flex; align-items: center; gap: 10px;
+  font-weight: 700; letter-spacing: .32em; font-size: 15px;
+}
+.logo-mark {
+  width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 50%;
+  position: relative;
+}
+.logo-mark::after { /* 円に斜めの1本線 */
+  content: ""; position: absolute; left: 50%; top: -3px; width: 2px; height: 22px;
+  background: var(--ink); transform: translateX(-50%) rotate(45deg);
+}
+.icon-btn {
+  min-width: 44px; height: 32px; padding: 0 8px;
+  background: none; border: 1px solid var(--ink);
+  font-size: 11px; font-weight: 700; letter-spacing: .14em; cursor: pointer;
+}
+.icon-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+.content { flex: 1; overflow-y: auto; padding: 18px 16px 24px; }
+.foot {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--ink); background: var(--bg);
+}
+.muted { color: var(--muted); font-size: 12px; }
+
+/* ---- ボタン ---- */
+.primary {
+  width: 100%; min-height: 60px; border: 0;
+  background: var(--ink); color: var(--bg);
+  font-size: 18px; font-weight: 700; letter-spacing: .4em; text-indent: .4em; cursor: pointer;
+}
+.primary:active { opacity: .82; }
+.ghost {
+  min-height: 44px; padding: 0 14px;
+  background: var(--bg); border: 1px solid var(--ink);
+  font-size: 12px; font-weight: 700; letter-spacing: .16em; cursor: pointer;
+}
+.ghost.wide { width: 100%; display: flex; align-items: center; justify-content: center; }
+.ghost.danger { border-style: dashed; }
+.ghost:disabled { opacity: .35; }
+.file-btn { cursor: pointer; }
+
+/* ---- スタート ---- */
+.lead { margin: 4px 0 22px; font-size: 22px; font-weight: 300; line-height: 1.5; letter-spacing: .02em; }
+.field { display: block; margin-bottom: 20px; }
+.field-label {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: .3em;
+}
+.field-label small { font-size: 11px; font-weight: 400; letter-spacing: .04em; color: var(--muted); }
+.field input[type=text], .field textarea {
+  width: 100%; padding: 12px; font-size: 16px;
+  background: var(--bg); border: 1px solid var(--ink); resize: vertical;
+}
+.seg { display: flex; border: 1px solid var(--ink); }
+.seg button {
+  flex: 1; min-height: 44px; border: 0; background: var(--bg); cursor: pointer;
+  font-weight: 700; letter-spacing: .1em;
+}
+.seg button + button { border-left: 1px solid var(--ink); }
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.target { display: flex; align-items: stretch; gap: 6px; }
+.step {
+  width: 48px; border: 1px solid var(--ink); background: var(--bg);
+  font-size: 12px; font-weight: 700; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.target-input {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--ink); height: 72px;
+}
+.target-input input {
+  width: 2.6ch; border: 0; background: none; text-align: center;
+  font-size: 40px; font-weight: 200; font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.target-input input::-webkit-outer-spin-button, .target-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.target-input span { font-size: 36px; font-weight: 200; }
+.toggle { display: flex; align-items: center; gap: 12px; margin: 6px 0 16px; cursor: pointer; }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle-box { flex: none; width: 40px; height: 22px; border: 1px solid var(--ink); position: relative; }
+.toggle-box::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: var(--ink);
+  transition: transform .15s;
+}
+.toggle input:checked + .toggle-box { background: var(--ink); }
+.toggle input:checked + .toggle-box::after { background: var(--bg); transform: translateX(18px); }
+.toggle input:focus-visible + .toggle-box { outline: 2px solid var(--ink); outline-offset: 2px; }
+.toggle small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.last { border-top: 1px solid var(--line); padding-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* ---- 計測 ---- */
+.play-bar { gap: 8px; }
+.play-title { flex: 1; font-size: 12px; font-weight: 700; letter-spacing: .12em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.play-total { font-size: 13px; color: var(--muted); }
+.exit {
+  height: 24px; padding: 0 6px; border: 1px solid var(--muted); background: none; color: var(--muted);
+  font-size: 9px; font-weight: 700; letter-spacing: .16em; cursor: pointer;
+}
+.banner {
+  height: 34px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; letter-spacing: .08em;
+  border-bottom: 1px solid var(--line); color: var(--muted);
+}
+.banner.caution { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.banner.slump {
+  color: var(--ink);
+  background: repeating-linear-gradient(135deg, var(--bg) 0 8px, var(--line) 8px 9px);
+}
+.banner.warn { background: var(--ink); color: var(--bg); letter-spacing: .14em; }
+.play-main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: stretch; padding: 10px 16px 6px; gap: 12px; }
+
+.ring-wrap { position: relative; width: min(64vw, 250px); aspect-ratio: 1; margin: 0 auto; }
+.ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--line); stroke-width: 2; }
+.ring-arc { fill: none; stroke: var(--ink); stroke-width: 6; stroke-linecap: butt; transition: stroke-width .2s; }
+.ring-arc.over { stroke-width: 3; }
+.ring-tick { stroke: var(--ink); stroke-width: 1; }
+.ring-tick.mark { stroke-width: 3; }
+body.caution .ring-arc { stroke-width: 10; }
+body.caution .ring-arc.over, body.warn .ring-arc.over { stroke-width: 6; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-no { font-size: 12px; font-weight: 700; letter-spacing: .3em; }
+.ring-lap { font-size: clamp(44px, 15vw, 60px); font-weight: 200; line-height: 1.1; }
+body.caution .ring-lap, body.warn .ring-lap { font-weight: 500; }
+.ring-target { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--ink); }
+.stats.wide { margin: 14px 0; }
+.stat { padding: 8px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
+.stat:nth-child(3n) { border-right: 0; }
+.stats .stat:nth-last-child(-n+3) { border-bottom: 0; }
+.stat-label { font-size: 9px; font-weight: 700; letter-spacing: .22em; color: var(--muted); }
+.stat-label small { letter-spacing: .02em; font-weight: 400; }
+.stat-val { font-size: 19px; font-weight: 300; margin-top: 2px; white-space: nowrap; }
+.stat.key .stat-val { font-weight: 600; }
+
+.bars { position: relative; height: 64px; border-bottom: 1px solid var(--ink); display: flex; align-items: flex-end; gap: 2px; }
+.bars.tall { height: 120px; margin-bottom: 18px; }
+.bars .b { flex: 1 1 0; max-width: 16px; background: var(--soft); min-height: 2px; }
+.bars .b.over { background: var(--ink); }
+.bars .b.cur { background: none; border: 1px dashed var(--ink); border-bottom: 0; }
+.bars .t { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); pointer-events: none; }
+.bars .t span { position: absolute; right: 0; top: -15px; font-size: 9px; letter-spacing: .1em; color: var(--muted); background: var(--bg); padding: 0 2px; }
+.bars-empty { align-self: center; width: 100%; text-align: center; color: var(--muted); font-size: 11px; letter-spacing: .1em; }
+
+.play-foot { gap: 8px; }
+.sub-row { display: flex; gap: 8px; }
+.sub-row .ghost { flex: 1; min-height: 40px; }
+.next { min-height: 104px; font-size: 26px; letter-spacing: .6em; text-indent: .6em; }
+body.paused .ring-lap, body.paused .ring-arc { opacity: .3; }
+
+/* 警告(ダレ): 縁を斜線で囲んで点滅 */
+.frame { display: none; }
+body.warn .frame {
+  display: block; position: fixed; inset: 0; pointer-events: none; z-index: 30;
+  border: 10px solid transparent;
+  border-image: repeating-linear-gradient(45deg, var(--ink) 0 8px, transparent 8px 16px) 10;
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { body.warn .frame { animation: none; } }
+
+/* ---- リザルト ---- */
+.result-head { text-align: center; padding: 8px 0 4px; }
+.result-head .cap { font-size: 11px; font-weight: 700; letter-spacing: .3em; }
+.result-head .big { font-size: 64px; font-weight: 200; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.result-head .sub { font-size: 13px; color: var(--muted); }
+
+/* ---- 履歴 ---- */
+.h-section { font-size: 11px; font-weight: 700; letter-spacing: .3em; margin: 0 0 8px; }
+.trend { border: 1px solid var(--ink); padding: 10px; margin-bottom: 20px; }
+.trend select { width: 100%; margin-bottom: 8px; padding: 8px; border: 1px solid var(--ink); background: var(--bg); font-size: 14px; }
+.trend svg { display: block; width: 100%; height: auto; }
+.trend-axis { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.list { display: grid; gap: 0; border-top: 1px solid var(--ink); }
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline;
+  padding: 12px 2px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; width: 100%; cursor: pointer;
+}
+.row .r-title { font-weight: 700; font-size: 14px; }
+.row .r-avg { font-size: 22px; font-weight: 300; font-variant-numeric: tabular-nums; text-align: right; }
+.row .r-sub { grid-column: 1 / -1; font-size: 11px; color: var(--muted); letter-spacing: .02em; }
+.row .r-comment { grid-column: 1 / -1; font-size: 12px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 0; font-size: 13px; letter-spacing: .06em; }
+
+/* ---- 設定 ---- */
+.form { display: grid; gap: 12px; margin-bottom: 26px; }
+.form h3 { margin: 6px 0 0; font-size: 11px; letter-spacing: .3em; }
+.form p { margin: 0; }
+.num-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.num-field small { display: block; color: var(--muted); font-size: 11px; }
+.num-field input { width: 72px; padding: 8px; text-align: right; border: 1px solid var(--ink); background: var(--bg); font-size: 16px; font-variant-numeric: tabular-nums; }
+.version { font-size: 13px; font-variant-numeric: tabular-nums; }
+.version.mixed { font-weight: 700; border: 1px dashed var(--ink); padding: 8px; }
+
+dialog {
+  background: var(--bg); color: var(--ink); border: 1px solid var(--ink);
+  width: min(92vw, 460px); padding: 16px; max-height: 90dvh;
+}
+dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.d-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.d-sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
