@@ -3,7 +3,7 @@
 /* ===== バージョン ===== */
 
 // 更新のたびに sw.js の VERSION、index.html の ?v= と同じ番号に上げる
-const APP_VERSION = 1;
+const APP_VERSION = 2;
 const APP_UPDATED = '2026-11-04';
 
 function renderVersion(el) {
