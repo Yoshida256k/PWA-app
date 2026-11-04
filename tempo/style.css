@@ -37,7 +37,8 @@ body {
     linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 24px 24px;
   color: var(--ink);
-  font-family: "Helvetica Neue", Helvetica, Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  /* 英数字は Jost(幾何学・数字の幅をそろえられる)、日本語は Zen Kaku Gothic New。読み込み前・オフライン初回はシステムフォント */
+  font-family: "Jost", "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
   transition: background-color .25s, color .25s;

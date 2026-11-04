@@ -1,6 +1,6 @@
 // TEMPO 本体をキャッシュしてオフラインでも起動できるようにする(範囲は tempo/ の中だけ)。
 // 更新したら VERSION、app.js の APP_VERSION、index.html の ?v= を同じ番号に上げること。
-const VERSION = 1;
+const VERSION = 2;
 const PREFIX = 'tempo-v';
 const CACHE = `${PREFIX}${VERSION}`;
 const ASSETS = [
@@ -33,9 +33,37 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Google Fonts は版に関係なく残す専用のキャッシュに入れ、オフラインでも同じフォントで表示する
+const FONT_CACHE = 'tempo-fonts';
+
+function fontResponse(request) {
+  const url = new URL(request.url);
+  // フォントのファイル(gstatic)は URL ごとに中身が変わらないのでキャッシュ優先、CSS はネットワーク優先
+  if (url.hostname === 'fonts.gstatic.com') {
+    return caches.open(FONT_CACHE).then((c) => c.match(request).then((hit) => hit || fetch(request).then((res) => {
+      if (res.ok) c.put(request, res.clone());
+      return res;
+    })));
+  }
+  return fetch(request)
+    .then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(FONT_CACHE).then((c) => c.put(request, copy));
+      }
+      return res;
+    })
+    .catch(() => caches.match(request));
+}
+
 // ネットワーク優先(更新をすぐ反映)、オフライン時はキャッシュ
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const host = new URL(event.request.url).hostname;
+  if (host === 'fonts.googleapis.com' || host === 'fonts.gstatic.com') {
+    event.respondWith(fontResponse(event.request));
+    return;
+  }
   event.respondWith(
     fetch(event.request, { cache: 'no-cache' })
       .then((res) => {
