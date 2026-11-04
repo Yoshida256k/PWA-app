@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <rect x="40" y="40" width="432" height="432" fill="none" stroke="#0a0a0a" stroke-width="8"/>
+  <circle cx="256" cy="232" r="132" fill="none" stroke="#0a0a0a" stroke-width="28"/>
+  <path d="M256 100 A132 132 0 0 1 388 232" fill="none" stroke="#ffffff" stroke-width="12"/>
+  <line x1="256" y1="232" x2="256" y2="132" stroke="#0a0a0a" stroke-width="14"/>
+  <line x1="256" y1="232" x2="326" y2="282" stroke="#0a0a0a" stroke-width="14"/>
+  <rect x="244" y="220" width="24" height="24" fill="#0a0a0a"/>
+  <text x="256" y="430" font-family="Helvetica, Arial, sans-serif" font-size="58" font-weight="700" letter-spacing="18" text-anchor="middle" fill="#0a0a0a">TEMPO</text>
+</svg>
