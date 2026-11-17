@@ -1,7 +1,7 @@
 # はよ寝てやご飯やで
 
 帰宅後の「ご飯」と「お風呂」をタイムアタック(RTA)にして、早く寝るためのPWAです。
-[task_ver4](https://github.com/Yoshida256k/task_ver4) のLiveSplit風UIをWebに移植しています。
+非公開リポジトリ task_ver4 のLiveSplit風UIをWebに移植しています。
 
 ## 機能
 - **玄関の扉を開けた瞬間に START**。ご飯・お風呂はどちらからでもOK(ホームで順番を選択)
