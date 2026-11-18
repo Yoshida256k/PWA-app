@@ -1,7 +1,7 @@
 {
-  "name": "はよ寝てやご飯やで",
-  "short_name": "はよ寝てや",
-  "description": "帰宅後のご飯とお風呂をタイムアタックして、早く寝るためのアプリ",
+  "name": "Bedtime RTA",
+  "short_name": "Bedtime RTA",
+  "description": "A speedrun-style timer for evening routines",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",

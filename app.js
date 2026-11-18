@@ -3,8 +3,8 @@
 /* ===== バージョン ===== */
 
 // 更新のたびに sw.js の VERSION、index.html の ?v= と同じ番号に上げる
-const APP_VERSION = 10;
-const APP_UPDATED = '2026-11-04';
+const APP_VERSION = 11;
+const APP_UPDATED = '2026-11-18';
 
 /** 画面(index.html)が読み込もうとした版。JS の版と違えば古いファイルが混ざっている */
 function htmlVersion() {

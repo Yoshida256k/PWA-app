@@ -1,39 +1,38 @@
-# はよ寝てやご飯やで
+# Bedtime RTA
 
-帰宅後の「ご飯」と「お風呂」をタイムアタック(RTA)にして、早く寝るためのPWAです。
-非公開リポジトリ task_ver4 のLiveSplit風UIをWebに移植しています。
+A speedrun-style (RTA) timer PWA for evening routines, with a LiveSplit-like UI ported from the private repository task_ver4.
 
-## 機能
-- **玄関の扉を開けた瞬間に START**。ご飯・お風呂はどちらからでもOK(ホームで順番を選択)
-- LiveSplit風スプリット表(PB差・累積・区間ベストはゴールド表示)
-- 目標時間を超えたら音とバイブで通知、画面は自動でスリープしない
-- **就寝予想時刻**を常に表示(目標就寝に間に合うかを色で表示)
-- 2つ目のタスクは**寝る直前まで**。ゴール時刻をそのまま就寝時刻として記録し、ひとことメッセージを書いてリザルト表示(開始・ゴール時刻つき)
-- **カレンダー**で日ごとのランク・就寝時刻を一覧、タップでその日のリザルトとひとことを見返せる(深夜4時までは前日扱い)
-- **PBは今月・今年・歴代の3段階**。ホームと計測中は「今月のPB」と比較し、カレンダーで表示中の月・年のPBを確認できる。更新した中でいちばん大きい期間のバッジがリザルトに出る
-- **📊 分析**: 期間(直近7日/30日/今月/全期間)で集計。平均就寝・目標達成率などのタイル、就寝が遅れる原因の分解(帰宅の遅れ/各タスクの超過)、夜のタイムライン、就寝時刻の推移(7日平均)、区間タイムの推移、順番の比較、曜日別。各グラフは「表で見る」でも確認できる
-- **歴代タイムアタック**: 合計/ご飯/お風呂ごとのランキング、就寝時刻の推移グラフ、全記録の並べ替え
-- ランク判定は task_ver4 と同じ基準(目標比 30%以上短縮でS、15%以上でA、短縮でB、それ以外C)
-- 一時停止、リロードしてもラン継続、オフライン動作、JSONで書き出し/読み込み
+## Features
+- **Start the moment you get home.** The two tasks can be done in either order (choose on the home screen)
+- LiveSplit-style split table (PB delta, cumulative time, best segments shown in gold)
+- Sound and vibration alert when a task goes over its target; the screen stays awake while timing
+- **Estimated finish time** is always shown, colored by whether it meets your target
+- The second task runs until the end of the night; its goal time is recorded as the finish time, with a short note and a result screen (start and goal times included)
+- **Calendar** view of each day's rank and finish time; tap a day to see its result and note (until 4 a.m. counts as the previous day)
+- **PBs for this month, this year, and all time.** Home and timing screens compare against this month's PB; the calendar shows the month/year PBs. The result screen shows a badge for the largest period you beat
+- **📊 Analysis**: aggregates by period (last 7 days / 30 days / this month / all time). Stat tiles (average finish time, target hit rate, etc.), a breakdown of what causes delays (late start / overrun of each task), a nightly timeline, finish-time trend (7-day average), split trends, order comparison, and day-of-week stats. Every chart can also be viewed as a table
+- **All-time leaderboard**: rankings for total time and each task, finish-time trend chart, sortable list of all records
+- Ranks use the same thresholds as task_ver4 (S: 30%+ faster than target, A: 15%+, B: faster, C: otherwise)
+- Pause, run survives reloads, works offline, JSON export/import
 
-記録はブラウザ(localStorage)に保存されます。機種変更の前には設定画面から書き出してください。
+Records are stored in the browser (localStorage). Export them from the settings screen before switching devices.
 
-## スマホで使う
-静的ファイルだけなので GitHub Pages などにそのまま置けます。
+## Using it on a phone
+It is just static files, so it can be hosted as-is on GitHub Pages or similar.
 
-1. GitHub のリポジトリ → Settings → Pages → Branch に公開するブランチと `/ (root)` を選ぶ
-2. 表示されたURLをスマホで開く
-3. Android(Chrome): メニュー →「ホーム画面に追加」/ iPhone(Safari): 共有 →「ホーム画面に追加」
+1. GitHub repository → Settings → Pages → choose the branch to publish and `/ (root)`
+2. Open the shown URL on your phone
+3. Android (Chrome): menu → "Add to Home screen" / iPhone (Safari): Share → "Add to Home Screen"
 
-ローカルで試す場合: `python3 -m http.server` を実行して http://localhost:8000 を開く。
+To try it locally: run `python3 -m http.server` and open http://localhost:8000.
 
-## ファイルを更新したとき
-`sw.js` の `VERSION`、`app.js` の `APP_VERSION`(と `APP_UPDATED`)、`index.html` で読み込んでいる `style.css?v=` `app.js?v=` `analysis.js?v=` の番号を同じ値に上げてください。ホームと設定画面に ver が表示され、画面とJSの版が食い違うと警告が出ます。HTMLだけ新しくなって古いJSが動く、という食い違いを防ぎます。
+## When you update files
+Bump `VERSION` in `sw.js`, `APP_VERSION` (and `APP_UPDATED`) in `app.js`, and the `style.css?v=` `app.js?v=` `analysis.js?v=` numbers in `index.html` to the same value. The version is shown on the home and settings screens, and a warning appears if the page and JS versions differ. This prevents a new HTML page from running with old JS.
 
-## TEMPO(別アプリ)
-1ページ・大問ごとに NEXT を押して平均解答時間を測る **TEMPO** は、リポジトリ [PWA-TEMPO](https://github.com/Yoshida256k/PWA-TEMPO) に移りました(公開URL: https://yoshida256k.github.io/PWA-TEMPO/ )。
-はよ寝てやのアプリの範囲(`/PWA-app/`)の中にあると単独でインストールできないためです。
-`tempo/` には旧URL用の転送ページと、旧 Service Worker を片付ける `sw.js` だけを残しています。
+## TEMPO (separate app)
+**TEMPO**, a timer that measures average time per page/problem by pressing NEXT, has moved to its own repository, [PWA-TEMPO](https://github.com/Yoshida256k/PWA-TEMPO) (URL: https://yoshida256k.github.io/PWA-TEMPO/).
+Inside this app's scope (`/PWA-app/`) it could not be installed on its own.
+`tempo/` only keeps a redirect page for the old URL and a `sw.js` that cleans up the old Service Worker.
 
-## Claude Code スキル
-- `.claude/skills/progressive-web-app/` — [secondsky/claude-skills](https://github.com/secondsky/claude-skills) (MIT) の PWA スキル
+## Claude Code skill
+- `.claude/skills/progressive-web-app/` — PWA skill from [secondsky/claude-skills](https://github.com/secondsky/claude-skills) (MIT)
